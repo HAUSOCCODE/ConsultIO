@@ -1,5 +1,5 @@
 import { FileText, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../../components/UI";
@@ -43,8 +43,10 @@ const time = (value) =>
   });
 
 export default function BookPage() {
+  const availabilityRequest = useRef(0);
   const [faculty, setFaculty] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [schedules, setSchedules] = useState([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [chosenSchedule, setChosenSchedule] = useState(null);
@@ -69,10 +71,12 @@ export default function BookPage() {
   }, []);
 
   useEffect(() => {
-    if (!chosenSchedule) return undefined;
+    if (!chosenSchedule && !availabilityOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") setChosenSchedule(null);
+      if (event.key !== "Escape") return;
+      if (chosenSchedule) setChosenSchedule(null);
+      else setAvailabilityOpen(false);
     };
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", closeOnEscape);
@@ -80,20 +84,26 @@ export default function BookPage() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [chosenSchedule]);
+  }, [availabilityOpen, chosenSchedule]);
 
-  const viewAvailability = async (member) => {
+  const viewAvailability = async (member, openModal = true) => {
+    const requestId = ++availabilityRequest.current;
     setSelected(member);
+    setAvailabilityOpen(openModal);
     setSchedules([]);
     setScheduleLoading(true);
     setMessage("");
     try {
       const data = await api(`/availability/faculty/${member._id}`);
-      setSchedules(Array.isArray(data?.schedules) ? data.schedules : []);
+      if (requestId === availabilityRequest.current)
+        setSchedules(Array.isArray(data?.schedules) ? data.schedules : []);
     } catch {
-      setMessage("Unable to load consultation information. Please try again.");
+      if (requestId === availabilityRequest.current)
+        setMessage(
+          "Unable to load consultation information. Please try again.",
+        );
     } finally {
-      setScheduleLoading(false);
+      if (requestId === availabilityRequest.current) setScheduleLoading(false);
     }
   };
 
@@ -156,7 +166,7 @@ export default function BookPage() {
       });
       setChosenSchedule(null);
       setForm(initialForm);
-      await viewAvailability(selected);
+      await viewAvailability(selected, false);
       await loadFaculty();
       setMessage(
         data.message || "Consultation request submitted successfully.",
@@ -226,7 +236,7 @@ export default function BookPage() {
                 <div className="min-w-0">
                   <h2 className="font-bold text-slate-900">{member.name}</h2>
                   <p className="text-sm text-slate-600">
-                    {member.department || "School of Computing"}
+                    {member.department || "Department not provided"}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
                     {member.designation || "Faculty Member"}
@@ -256,87 +266,172 @@ export default function BookPage() {
           ))}
         </div>
       )}
-      {selected && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-xl font-bold text-maroon-900">{selected.name}</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Available Consultation Schedules
-          </p>
-          {scheduleLoading ? (
-            <p className="py-10 text-center text-sm font-semibold text-maroon-800">
-              Loading consultation schedules...
-            </p>
-          ) : schedules.length === 0 ? (
-            <EmptyState
-              title="No consultation schedules are currently available for this faculty member."
-              text="Please check again later."
-            />
-          ) : (
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {schedules.map((schedule) => (
-                <article
-                  key={schedule._id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+      {selected &&
+        availabilityOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-2 sm:p-4"
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && setAvailabilityOpen(false)
+            }
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="faculty-availability-title"
+              onMouseDown={(event) => event.stopPropagation()}
+              className="max-h-[90vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl sm:max-h-[85vh] sm:w-full"
+            >
+              <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+                <div className="min-w-0">
+                  <h2
+                    id="faculty-availability-title"
+                    className="text-xl font-bold text-maroon-900"
+                  >
+                    Faculty Availability
+                  </h2>
+                  <p className="mt-2 truncate font-bold text-slate-900">
+                    {selected.name}
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    {selected.designation || "Faculty Member"}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {selected.department || "Department not provided"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close faculty availability"
+                  onClick={() => setAvailabilityOpen(false)}
+                  autoFocus
+                  className="shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                 >
-                  <p className="font-bold">
-                    {new Date(schedule.startAt).toLocaleDateString(undefined, {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                  <X />
+                </button>
+              </header>
+              <div className="px-5 py-5 sm:px-6">
+                {(selected.specialization ||
+                  selected.office ||
+                  selected.consultationModes?.length) && (
+                  <dl className="mb-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-2">
+                    {selected.specialization && (
+                      <div>
+                        <dt className="font-semibold text-slate-500">
+                          Specialization
+                        </dt>
+                        <dd className="mt-1 text-slate-800">
+                          {selected.specialization}
+                        </dd>
+                      </div>
+                    )}
+                    {selected.office && (
+                      <div>
+                        <dt className="font-semibold text-slate-500">Office</dt>
+                        <dd className="mt-1 text-slate-800">
+                          {selected.office}
+                        </dd>
+                      </div>
+                    )}
+                    {selected.consultationModes?.length > 0 && (
+                      <div>
+                        <dt className="font-semibold text-slate-500">
+                          Consultation Mode
+                        </dt>
+                        <dd className="mt-1 text-slate-800">
+                          {selected.consultationModes.join(", ")}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+                <h3 className="font-bold text-maroon-900">
+                  Available Consultation Schedules
+                </h3>
+                {scheduleLoading ? (
+                  <p className="py-10 text-center text-sm font-semibold text-maroon-800">
+                    Loading consultation schedules...
                   </p>
-                  <p className="mt-1 text-sm">
-                    {time(schedule.startAt)} – {time(schedule.endAt)}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {schedule.mode} · {schedule.location}
-                  </p>
-                  {schedule.hasActiveRequest ? (
-                    <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center">
-                      <p className="font-bold text-green-800">
-                        {schedule.requestStatus === "Approved"
-                          ? "✓ Consultation Approved"
-                          : schedule.requestStatus === "Rescheduled"
-                            ? "✓ Consultation Rescheduled"
-                            : "✓ Request Already Sent"}
-                      </p>
-                      <p className="mt-1 text-sm text-green-700">
-                        Status: {schedule.requestStatus}
-                      </p>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setChosenSchedule(schedule);
-                        const windowMinutes = Math.round(
-                          (new Date(schedule.endAt) -
-                            new Date(schedule.startAt)) /
-                            60000,
-                        );
-                        const defaultEstimate = [10, 15, 20, 30, 45, 60].find(
-                          (minutes) => minutes <= windowMinutes,
-                        );
-                        setForm({
-                          ...initialForm,
-                          estimatedDurationMinutes: defaultEstimate
-                            ? String(defaultEstimate)
-                            : "custom",
-                          customEstimatedDuration: defaultEstimate ? "" : "5",
-                        });
-                      }}
-                      className="btn-primary mt-4 w-full py-2"
-                    >
-                      Request Consultation
-                    </button>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+                ) : schedules.length === 0 ? (
+                  <EmptyState
+                    title="No consultation schedules are currently available for this faculty member."
+                    text="Please check again later."
+                  />
+                ) : (
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {schedules.map((schedule) => (
+                      <article
+                        key={schedule._id}
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <p className="font-bold">
+                          {new Date(schedule.startAt).toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "long",
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {time(schedule.startAt)} – {time(schedule.endAt)}
+                        </p>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {schedule.mode} · {schedule.location}
+                        </p>
+                        {schedule.hasActiveRequest ? (
+                          <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center">
+                            <p className="font-bold text-green-800">
+                              {schedule.requestStatus === "Approved"
+                                ? "✓ Consultation Approved"
+                                : schedule.requestStatus === "Rescheduled"
+                                  ? "✓ Consultation Rescheduled"
+                                  : "✓ Request Already Sent"}
+                            </p>
+                            <p className="mt-1 text-sm text-green-700">
+                              Status: {schedule.requestStatus}
+                            </p>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAvailabilityOpen(false);
+                              setChosenSchedule(schedule);
+                              const windowMinutes = Math.round(
+                                (new Date(schedule.endAt) -
+                                  new Date(schedule.startAt)) /
+                                  60000,
+                              );
+                              const defaultEstimate = [
+                                10, 15, 20, 30, 45, 60,
+                              ].find((minutes) => minutes <= windowMinutes);
+                              setForm({
+                                ...initialForm,
+                                estimatedDurationMinutes: defaultEstimate
+                                  ? String(defaultEstimate)
+                                  : "custom",
+                                customEstimatedDuration: defaultEstimate
+                                  ? ""
+                                  : "5",
+                              });
+                            }}
+                            className="btn-primary mt-4 w-full py-2"
+                          >
+                            Request Consultation
+                          </button>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
       {chosenSchedule &&
         createPortal(
           <div

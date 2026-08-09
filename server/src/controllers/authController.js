@@ -29,6 +29,10 @@ const publicUser = (user) => ({
   employeeId: user.employeeId,
   program: user.program,
   department: user.department,
+  yearLevel: user.yearLevel,
+  office: user.office,
+  specialization: user.specialization,
+  contactNumber: user.contactNumber,
 });
 const tokenFor = (user) =>
   jwt.sign({ sub: user.id }, env.jwtSecret, { expiresIn: "8h" });
@@ -176,6 +180,39 @@ export async function updateProfile(req, res) {
     runValidators: true,
   }).select("-password");
   res.json({ message: "Profile updated successfully.", user });
+}
+
+export async function changePassword(req, res) {
+  const currentPassword = req.body.currentPassword || "";
+  const newPassword = req.body.newPassword || "";
+  const confirmNewPassword = req.body.confirmNewPassword || "";
+  if (!currentPassword || !newPassword || !confirmNewPassword)
+    return res.status(400).json({
+      message:
+        "Current password, new password, and password confirmation are required.",
+    });
+  if (newPassword !== confirmNewPassword)
+    return res.status(400).json({
+      message: "New password and confirmation do not match.",
+    });
+  if (!validPassword(newPassword))
+    return res.status(400).json({ message: passwordValidationMessage });
+
+  const user = await User.findById(req.user.id).select("+password");
+  if (!user || !(await bcrypt.compare(currentPassword, user.password)))
+    return res.status(400).json({ message: "Current password is incorrect." });
+  if (await bcrypt.compare(newPassword, user.password))
+    return res.status(400).json({
+      message: "New password must be different from your current password.",
+    });
+
+  user.password = await bcrypt.hash(newPassword, 12);
+  user.passwordChangedAt = new Date();
+  await user.save();
+  await logActivity("password_changed", user.id, "User", user.id, {
+    role: user.role,
+  });
+  res.json({ message: "Password changed successfully." });
 }
 
 export async function ensureAdmin() {

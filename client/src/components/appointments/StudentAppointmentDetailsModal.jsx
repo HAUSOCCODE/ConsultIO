@@ -45,7 +45,7 @@ export default function StudentAppointmentDetailsModal({
               id="student-appointment-title"
               className="text-xl font-bold text-maroon-900"
             >
-              Appointment Details
+              Consultation Details
             </h2>
             <p className="mt-1 font-semibold text-slate-700">
               {appointment.subject || "Consultation"}
@@ -67,9 +67,9 @@ export default function StudentAppointmentDetailsModal({
 
         <div className="space-y-6 px-5 py-5 sm:px-6">
           <div className="grid gap-6 md:grid-cols-2">
-            <Section title="Appointment Information">
+            <Section title="Consultation Information">
               <Detail label="Subject / Topic" value={appointment.subject} />
-              <Detail label="Appointment Status" value={appointment.status} />
+              <Detail label="Status" value={appointment.status} />
               <Detail
                 label="Reason for Consultation"
                 value={appointment.reason}
@@ -100,7 +100,7 @@ export default function StudentAppointmentDetailsModal({
             </Section>
           </div>
 
-          <Section title="Schedule Information">
+          <Section title="Schedule">
             <Detail
               label="Consultation Date"
               value={safeDate(appointment.startAt, {
@@ -130,11 +130,32 @@ export default function StudentAppointmentDetailsModal({
           </Section>
 
           {appointment.status === "Rejected" && appointment.responseNote && (
-            <Section title="Status Information">
+            <Section title="Status Details">
               <Detail
                 label="Rejection Reason"
                 value={appointment.responseNote}
                 wide
+              />
+            </Section>
+          )}
+          {appointment.status === "Cancelled" && (
+            <Section title="Status Details">
+              <Detail
+                label="Cancellation Reason"
+                value={appointment.responseNote || "Not provided"}
+                wide
+              />
+            </Section>
+          )}
+          {appointment.status === "Completed" && (
+            <Section title="Status Details">
+              <Detail
+                label="Completion Date"
+                value={safeDate(appointment.updatedAt)}
+              />
+              <Detail
+                label="Consultation Summary"
+                value={appointment.responseNote || "Not provided"}
               />
             </Section>
           )}

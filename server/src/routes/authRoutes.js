@@ -1,6 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import {
+  changePassword,
   login,
   me,
   register,
@@ -19,4 +20,5 @@ router.post("/register/:role", limiter, register);
 router.post("/login/:role", limiter, login);
 router.get("/me", authenticate, me);
 router.put("/me", authenticate, updateProfile);
+router.put("/change-password", authenticate, limiter, changePassword);
 export default router;
