@@ -3,15 +3,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../../components/UI";
+import { useAuth } from "../../context/AuthContext";
 
-const initialForm = {
+const YEAR_LEVELS = [
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+];
+const initialForm = (yearLevel = "") => ({
   subject: "",
   reason: "",
-  notes: "",
+  yearLevel: YEAR_LEVELS.includes(yearLevel) ? yearLevel : "",
   documents: [],
   estimatedDurationMinutes: "10",
   customEstimatedDuration: "",
-};
+});
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
 const allowedExtensions = new Set([
@@ -43,6 +51,7 @@ const time = (value) =>
   });
 
 export default function BookPage() {
+  const { user } = useAuth();
   const availabilityRequest = useRef(0);
   const [faculty, setFaculty] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -51,7 +60,7 @@ export default function BookPage() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [chosenSchedule, setChosenSchedule] = useState(null);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => initialForm(user.yearLevel));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -146,13 +155,17 @@ export default function BookPage() {
   const submit = async (event) => {
     event.preventDefault();
     if (!selected || !chosenSchedule) return;
+    if (!YEAR_LEVELS.includes(form.yearLevel)) {
+      setMessage("Please select your year level.");
+      return;
+    }
     setSubmitting(true);
     setMessage("");
     try {
       const request = new FormData();
       request.append("subject", form.subject);
       request.append("reason", form.reason);
-      request.append("notes", form.notes);
+      request.append("yearLevel", form.yearLevel);
       request.append("availabilityId", chosenSchedule.availabilityId);
       const estimatedDuration =
         form.estimatedDurationMinutes === "custom"
@@ -165,7 +178,7 @@ export default function BookPage() {
         body: request,
       });
       setChosenSchedule(null);
-      setForm(initialForm);
+      setForm(initialForm(user.yearLevel));
       await viewAvailability(selected, false);
       await loadFaculty();
       setMessage(
@@ -379,7 +392,11 @@ export default function BookPage() {
                           {time(schedule.startAt)} – {time(schedule.endAt)}
                         </p>
                         <p className="mt-2 text-sm text-slate-600">
-                          {schedule.mode} · {schedule.location}
+                          {schedule.mode} ·{" "}
+                          {schedule.mode === "Online"
+                            ? schedule.meetingPlatform ||
+                              "Meeting platform not provided"
+                            : schedule.location || "Location not provided"}
                         </p>
                         {schedule.hasActiveRequest ? (
                           <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center">
@@ -409,7 +426,7 @@ export default function BookPage() {
                                 10, 15, 20, 30, 45, 60,
                               ].find((minutes) => minutes <= windowMinutes);
                               setForm({
-                                ...initialForm,
+                                ...initialForm(user.yearLevel),
                                 estimatedDurationMinutes: defaultEstimate
                                   ? String(defaultEstimate)
                                   : "custom",
@@ -488,7 +505,11 @@ export default function BookPage() {
                     {time(chosenSchedule.endAt)}
                   </p>
                   <p className="mt-1">
-                    {chosenSchedule.mode} · {chosenSchedule.location}
+                    {chosenSchedule.mode} ·{" "}
+                    {chosenSchedule.mode === "Online"
+                      ? chosenSchedule.meetingPlatform ||
+                        "Meeting platform not provided"
+                      : chosenSchedule.location || "Location not provided"}
                   </p>
                 </div>
                 <div className="mt-4 space-y-4">
@@ -505,16 +526,22 @@ export default function BookPage() {
                     />
                   </label>
                   <label className="block text-sm font-semibold">
-                    Reason for Consultation
-                    <textarea
-                      className="field mt-2 min-h-[100px] resize-y"
+                    Year Level
+                    <select
+                      className="field mt-2 w-full"
                       required
-                      maxLength="1000"
-                      value={form.reason}
+                      value={form.yearLevel}
                       onChange={(event) =>
-                        setForm({ ...form, reason: event.target.value })
+                        setForm({ ...form, yearLevel: event.target.value })
                       }
-                    />
+                    >
+                      <option value="">Select year level</option>
+                      {YEAR_LEVELS.map((yearLevel) => (
+                        <option key={yearLevel} value={yearLevel}>
+                          {yearLevel}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="block text-sm font-semibold">
                     Estimated Consultation Time
@@ -628,13 +655,15 @@ export default function BookPage() {
                     </div>
                   )}
                   <label className="block text-sm font-semibold">
-                    Optional Notes
+                    Reason for Consultation
                     <textarea
-                      className="field mt-2 min-h-20 resize-y"
+                      className="field mt-2 min-h-[100px] resize-y"
+                      required
                       maxLength="1000"
-                      value={form.notes}
+                      placeholder="Briefly describe why you are requesting this consultation."
+                      value={form.reason}
                       onChange={(event) =>
-                        setForm({ ...form, notes: event.target.value })
+                        setForm({ ...form, reason: event.target.value })
                       }
                     />
                   </label>

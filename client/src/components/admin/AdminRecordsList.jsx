@@ -9,19 +9,15 @@ export default function DataPage({ type, title }) {
     const path =
       type === "users"
         ? "/admin/users"
-        : type === "logs"
-          ? "/admin/logs"
-          : type === "adminAppointments"
-            ? "/admin/appointments"
-            : type === "tasks"
-              ? null
-              : null;
+        : type === "adminAppointments"
+          ? "/admin/appointments"
+          : null;
     if (!path) {
       setData([]);
       return;
     }
     api(path)
-      .then((d) => setData(d.users || d.logs || d.appointments || []))
+      .then((d) => setData(d.users || d.appointments || []))
       .catch(() =>
         setError(`Unable to load ${title.toLowerCase()}. Please try again.`),
       );
@@ -73,11 +69,9 @@ export default function DataPage({ type, title }) {
       {data.length === 0 ? (
         <EmptyState
           title={
-            type === "logs"
-              ? "No activity logs available."
-              : type === "adminAppointments"
-                ? "No appointments found."
-                : `No ${title.toLowerCase()} available`
+            type === "adminAppointments"
+              ? "No appointments found."
+              : `No ${title.toLowerCase()} available`
           }
         />
       ) : (

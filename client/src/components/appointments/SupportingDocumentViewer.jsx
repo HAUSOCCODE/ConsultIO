@@ -146,6 +146,11 @@ export default function SupportingDocumentViewer({
                   {fileType(document.mimeType, document.name)} ·{" "}
                   {formatSize(document.size)}
                 </p>
+                {kind === "unsupported" && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Preview not available for this file type.
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {kind !== "unsupported" && (

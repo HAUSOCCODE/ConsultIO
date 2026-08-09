@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
+import OnlineMeetingDetails from "./OnlineMeetingDetails";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -51,7 +52,7 @@ export default function FacultyAppointmentDetailsModal({
               id="faculty-appointment-title"
               className="text-xl font-bold text-maroon-900"
             >
-              Appointment Details
+              Consultation Details
             </h2>
             <p className="mt-1 break-words font-semibold text-slate-800">
               {appointment.subject || "Consultation"}
@@ -85,7 +86,7 @@ export default function FacultyAppointmentDetailsModal({
               <Detail label="Program" value={appointment.student?.program} />
               <Detail
                 label="Year Level"
-                value={appointment.student?.yearLevel}
+                value={appointment.yearLevel || appointment.student?.yearLevel}
               />
               <Detail
                 label="Official Student Email"
@@ -96,21 +97,23 @@ export default function FacultyAppointmentDetailsModal({
 
             <Section title="Consultation Information">
               <Detail label="Subject / Topic" value={appointment.subject} />
-              <Detail label="Appointment Status" value={appointment.status} />
+              <Detail
+                label="Estimated Consultation Time"
+                value={
+                  appointment.estimatedDurationMinutes
+                    ? `${appointment.estimatedDurationMinutes} minutes`
+                    : "Not provided"
+                }
+              />
               <Detail
                 label="Reason for Consultation"
                 value={appointment.reason}
                 wide
               />
-              <Detail
-                label="Optional Notes"
-                value={appointment.notes || "No optional notes were provided."}
-                wide
-              />
+              <Detail label="Status" value={appointment.status} />
               <Detail
                 label="Date Request Was Submitted"
                 value={safeDate(appointment.createdAt)}
-                wide
               />
             </Section>
           </div>
@@ -130,19 +133,19 @@ export default function FacultyAppointmentDetailsModal({
               value={`${clock(appointment.startAt)} – ${clock(appointment.endAt)}`}
             />
             <Detail
-              label="Estimated Consultation Time"
-              value={
-                appointment.estimatedDurationMinutes
-                  ? `${appointment.estimatedDurationMinutes} minutes`
-                  : "Not provided"
-              }
-            />
-            <Detail
               label="Consultation Mode"
               value={appointment.consultationMode}
             />
-            <Detail label="Location / Platform" value={appointment.location} />
+            {appointment.consultationMode === "Face-to-Face" && (
+              <Detail label="Location" value={appointment.location} />
+            )}
           </Section>
+
+          <OnlineMeetingDetails
+            appointment={appointment}
+            allowLink
+            emptyLinkText="Meeting link not provided."
+          />
 
           {appointment.responseNote && (
             <Section title="Status Information">

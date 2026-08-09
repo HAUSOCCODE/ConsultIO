@@ -21,6 +21,13 @@ const availabilitySchema = new mongoose.Schema(
       enum: ["Face-to-Face", "Online"],
       default: "Online",
     },
+    meetingPlatform: { type: String, trim: true, maxlength: 100 },
+    meetingLink: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      select: false,
+    },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true },

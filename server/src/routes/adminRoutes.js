@@ -4,7 +4,6 @@ import {
   approveRegistration,
   changeAdminPassword,
   getAdminAppointments,
-  getAuditLogs,
   getRegistration,
   getRegistrations,
   getUser,
@@ -25,7 +24,6 @@ router.get("/users/:id", getUser);
 router.put("/users/:id/reset-password", resetUserPassword);
 router.put("/users/:id/status", updateUserStatus);
 router.get("/appointments", getAdminAppointments);
-router.get("/logs", getAuditLogs);
 router.put("/settings/password", changeAdminPassword);
 
 export default router;

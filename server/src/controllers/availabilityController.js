@@ -11,13 +11,49 @@ const validateSchedule = ({ startAt, endAt }) => {
   return "";
 };
 
+const validMeetingLink = (value) => {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const legacyPlatform = (availability) => {
+  if (availability.meetingPlatform) return availability.meetingPlatform;
+  return "Meeting platform not provided";
+};
+
+const validateModeFields = ({
+  mode,
+  location,
+  meetingPlatform,
+  meetingLink,
+}) => {
+  if (mode === "Face-to-Face" && !location?.trim())
+    return "Location is required for face-to-face availability.";
+  if (mode === "Online" && !meetingPlatform?.trim())
+    return "Meeting platform is required for online availability.";
+  if (
+    mode === "Online" &&
+    meetingLink?.trim() &&
+    !validMeetingLink(meetingLink.trim())
+  )
+    return "Please enter a valid meeting link.";
+  return "";
+};
+
 const scheduleShape = (availability) => ({
   _id: availability.id,
   availabilityId: availability.id,
   startAt: availability.startAt,
   endAt: availability.endAt,
   mode: availability.mode || "Online",
-  location: availability.location,
+  location:
+    availability.mode === "Face-to-Face" ? availability.location : undefined,
+  meetingPlatform:
+    availability.mode === "Online" ? legacyPlatform(availability) : undefined,
 });
 
 export const getAvailableFaculty = async (_req, res) => {
@@ -84,9 +120,9 @@ export const getFacultyAvailability = async (req, res) => {
 
 export const getMyAvailability = async (req, res) =>
   res.json({
-    availability: await Availability.find({ faculty: req.user.id }).sort({
-      startAt: 1,
-    }),
+    availability: await Availability.find({ faculty: req.user.id })
+      .select("+meetingLink")
+      .sort({ startAt: 1 }),
   });
 
 export const createAvailability = async (req, res) => {
@@ -110,12 +146,17 @@ export const createAvailability = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Select a valid consultation mode." });
+  const modeValidation = validateModeFields(req.body);
+  if (modeValidation) return res.status(400).json({ message: modeValidation });
   const availability = await Availability.create({
     faculty: req.user.id,
     startAt,
     endAt,
-    location: req.body.location,
+    location: req.body.mode === "Face-to-Face" ? req.body.location.trim() : "",
     mode: req.body.mode,
+    meetingPlatform:
+      req.body.mode === "Online" ? req.body.meetingPlatform.trim() : "",
+    meetingLink: req.body.mode === "Online" ? req.body.meetingLink.trim() : "",
   });
   res
     .status(201)
@@ -126,7 +167,7 @@ export const updateAvailability = async (req, res) => {
   const schedule = await Availability.findOne({
     _id: req.params.id,
     faculty: req.user.id,
-  });
+  }).select("+meetingLink");
   if (!schedule)
     return res.status(404).json({ message: "Availability not found." });
   if (req.body.startAt || req.body.endAt) {
@@ -135,24 +176,29 @@ export const updateAvailability = async (req, res) => {
     const validationError = validateSchedule({ startAt, endAt });
     if (validationError)
       return res.status(400).json({ message: validationError });
+    const changesTime =
+      startAt.getTime() !== schedule.startAt.getTime() ||
+      endAt.getTime() !== schedule.endAt.getTime();
     if (
-      await Appointment.exists({
+      changesTime &&
+      (await Appointment.exists({
         availability: schedule.id,
         status: { $in: ["Pending", "Approved", "Rescheduled"] },
-      })
+      }))
     )
       return res.status(409).json({
         message:
           "An availability with consultation requests cannot have its time changed.",
       });
     if (
-      await Availability.exists({
+      changesTime &&
+      (await Availability.exists({
         _id: { $ne: schedule.id },
         faculty: req.user.id,
         isActive: true,
         startAt: { $lt: endAt },
         endAt: { $gt: startAt },
-      })
+      }))
     )
       return res
         .status(409)
@@ -162,9 +208,35 @@ export const updateAvailability = async (req, res) => {
   }
   if (typeof req.body.isActive === "boolean")
     schedule.isActive = req.body.isActive;
-  if (req.body.location !== undefined) schedule.location = req.body.location;
-  if (req.body.mode && ["Face-to-Face", "Online"].includes(req.body.mode))
-    schedule.mode = req.body.mode;
+  const updatesModeFields = [
+    "mode",
+    "location",
+    "meetingPlatform",
+    "meetingLink",
+  ].some((field) => req.body[field] !== undefined);
+  if (updatesModeFields) {
+    const mode = req.body.mode || schedule.mode;
+    if (!["Face-to-Face", "Online"].includes(mode))
+      return res
+        .status(400)
+        .json({ message: "Select a valid consultation mode." });
+    const modeFields = {
+      mode,
+      location: req.body.location ?? schedule.location,
+      meetingPlatform: req.body.meetingPlatform ?? schedule.meetingPlatform,
+      meetingLink: req.body.meetingLink ?? schedule.meetingLink,
+    };
+    const modeValidation = validateModeFields(modeFields);
+    if (modeValidation)
+      return res.status(400).json({ message: modeValidation });
+    schedule.mode = mode;
+    schedule.location =
+      mode === "Face-to-Face" ? modeFields.location.trim() : "";
+    schedule.meetingPlatform =
+      mode === "Online" ? modeFields.meetingPlatform.trim() : "";
+    schedule.meetingLink =
+      mode === "Online" ? modeFields.meetingLink.trim() : "";
+  }
   await schedule.save();
   res.json({
     message: req.body.startAt

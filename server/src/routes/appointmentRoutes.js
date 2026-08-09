@@ -14,6 +14,10 @@ const documentSize = (data = "") => {
   return Buffer.from(encoded, "base64").length;
 };
 
+const looksLikeUrl = (value = "") => /^https?:\/\//i.test(value);
+const platformFor = (availability) =>
+  availability?.meetingPlatform || "Meeting platform not provided";
+
 const capacitySummary = async (facultyId) => {
   const appointments = await Appointment.find({
     faculty: facultyId,
@@ -63,10 +67,31 @@ router.get("/mine", authorize("student", "faculty"), async (req, res) => {
       "name email department specialization office designation",
     )
     .populate("supportingDocuments", "originalName mimeType size createdAt")
-    .populate("availability", "startAt endAt mode location")
-    .sort({ startAt: -1 });
+    .populate(
+      "availability",
+      "startAt endAt mode location meetingPlatform +meetingLink",
+    )
+    .sort({ startAt: -1 })
+    .lean();
+  const safeAppointments = appointments.map((appointment) => {
+    const availability = appointment.availability;
+    if (
+      appointment.consultationMode === "Online" ||
+      availability?.mode === "Online"
+    ) {
+      appointment.meetingPlatform = platformFor(availability);
+      const canAccessLink =
+        req.user.role === "faculty" ||
+        ["Approved", "Rescheduled", "Completed"].includes(appointment.status);
+      if (canAccessLink && availability?.meetingLink)
+        appointment.meetingLink = availability.meetingLink;
+      if (availability) delete availability.meetingLink;
+      if (looksLikeUrl(appointment.location)) appointment.location = "";
+    }
+    return appointment;
+  });
   res.json({
-    appointments,
+    appointments: safeAppointments,
     ...(req.user.role === "faculty" && {
       availabilityCapacity: await capacitySummary(req.user.id),
     }),
@@ -121,10 +146,19 @@ router.post(
       });
     const subject = (req.body.subject || "").trim();
     const reason = (req.body.reason || "").trim();
+    const yearLevel = (req.body.yearLevel || "").trim();
     if (!subject || !reason)
       return res
         .status(400)
         .json({ message: "Subject and reason are required." });
+    if (
+      !["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"].includes(
+        yearLevel,
+      )
+    )
+      return res
+        .status(400)
+        .json({ message: "Please select your year level." });
     const appointment = await Appointment.create({
       student: req.user.id,
       faculty: slot.faculty,
@@ -133,10 +167,10 @@ router.post(
       endAt: requestedEnd,
       estimatedDurationMinutes,
       subject,
+      yearLevel,
       reason,
-      notes: req.body.notes,
       consultationMode: slot.mode || "Online",
-      location: slot.location,
+      location: slot.mode === "Online" ? platformFor(slot) : slot.location,
     });
     try {
       if (req.files?.length) {

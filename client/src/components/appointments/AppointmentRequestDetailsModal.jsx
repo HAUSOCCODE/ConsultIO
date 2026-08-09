@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
+import OnlineMeetingDetails from "./OnlineMeetingDetails";
 
 const dateTime = (value) => new Date(value).toLocaleString();
 const time = (value) =>
@@ -76,7 +77,7 @@ export default function AppointmentRequestDetailsModal({
               <Detail label="Program" value={appointment.student?.program} />
               <Detail
                 label="Year Level"
-                value={appointment.student?.yearLevel}
+                value={appointment.yearLevel || appointment.student?.yearLevel}
               />
             </DetailSection>
             <DetailSection title="Consultation Information">
@@ -105,11 +106,15 @@ export default function AppointmentRequestDetailsModal({
                     : "Not provided"
                 }
               />
-              <Detail label="Mode" value={appointment.consultationMode} />
               <Detail
-                label="Location / Platform"
-                value={appointment.location}
+                label="Reason for Consultation"
+                value={appointment.reason}
+                wide
               />
+              <Detail label="Mode" value={appointment.consultationMode} />
+              {appointment.consultationMode === "Face-to-Face" && (
+                <Detail label="Location" value={appointment.location} />
+              )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Status
@@ -121,19 +126,11 @@ export default function AppointmentRequestDetailsModal({
             </DetailSection>
           </div>
 
-          <DetailSection title="Request Information">
-            <Detail
-              label="Reason for Consultation"
-              value={appointment.reason}
-              wide
-            />
-            <Detail
-              label="Optional Notes"
-              value={appointment.notes || "No optional notes were provided."}
-              wide
-            />
-            <Detail label="Faculty" value={appointment.faculty?.name} />
-          </DetailSection>
+          <OnlineMeetingDetails
+            appointment={appointment}
+            allowLink
+            emptyLinkText="Meeting link not provided."
+          />
 
           <DetailSection title="Supporting Documents">
             <div className="sm:col-span-2">

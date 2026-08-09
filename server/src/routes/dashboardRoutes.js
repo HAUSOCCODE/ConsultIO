@@ -4,7 +4,6 @@ import Appointment from "../models/Appointment.js";
 import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
 import Availability from "../models/Availability.js";
-import AuditLog from "../models/AuditLog.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 const router = Router();
 router.use(authenticate);
@@ -26,7 +25,6 @@ router.get("/admin", authorize("admin"), async (_req, res) => {
     statusCounts,
     recentRegistrations,
     recentAppointments,
-    recentActivity,
   ] = await Promise.all([
     User.countDocuments({ role: "student", registrationStatus: "Approved" }),
     User.countDocuments({ role: "faculty", registrationStatus: "Approved" }),
@@ -50,7 +48,6 @@ router.get("/admin", authorize("admin"), async (_req, res) => {
       .populate("student faculty", "name")
       .sort({ createdAt: -1 })
       .limit(5),
-    AuditLog.find().populate("actor", "name").sort({ createdAt: -1 }).limit(8),
   ]);
   res.json({
     stats: {
@@ -68,7 +65,6 @@ router.get("/admin", authorize("admin"), async (_req, res) => {
     },
     recentRegistrations,
     recentAppointments,
-    recentActivity,
   });
 });
 router.get("/student", authorize("student"), async (req, res) => {

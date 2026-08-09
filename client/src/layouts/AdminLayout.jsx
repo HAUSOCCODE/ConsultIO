@@ -3,7 +3,6 @@ import {
   CalendarDays,
   FileBarChart,
   LayoutDashboard,
-  ScrollText,
   Settings,
   Users,
 } from "lucide-react";
@@ -22,7 +21,6 @@ const navigation = [
     path: "/admin/appointments",
   },
   { icon: FileBarChart, label: "Reports & Analytics", path: "/admin/reports" },
-  { icon: ScrollText, label: "Audit Logs", path: "/admin/logs" },
   { icon: Settings, label: "System Settings", path: "/admin/settings" },
 ];
 export default function AdminLayout() {

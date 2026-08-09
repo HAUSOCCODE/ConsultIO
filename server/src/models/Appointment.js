@@ -23,6 +23,10 @@ const appointmentSchema = new mongoose.Schema(
     endAt: { type: Date, required: true, index: true },
     estimatedDurationMinutes: { type: Number, min: 5, max: 1440 },
     subject: { type: String, required: true, trim: true, maxlength: 150 },
+    yearLevel: {
+      type: String,
+      enum: ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"],
+    },
     reason: { type: String, required: true, trim: true, maxlength: 1000 },
     notes: { type: String, trim: true, maxlength: 1000 },
     consultationMode: {

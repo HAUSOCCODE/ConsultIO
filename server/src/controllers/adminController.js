@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Appointment from "../models/Appointment.js";
-import AuditLog from "../models/AuditLog.js";
 import { logActivity, notify } from "../services/activityService.js";
 
 const managedRoles = ["student", "faculty"];
@@ -176,13 +175,6 @@ export async function getAdminAppointments(_req, res) {
     .populate("faculty", "name email department")
     .sort({ createdAt: -1 });
   res.json({ appointments });
-}
-export async function getAuditLogs(_req, res) {
-  const logs = await AuditLog.find()
-    .populate("actor", "name role")
-    .sort({ createdAt: -1 })
-    .limit(200);
-  res.json({ logs });
 }
 export async function changeAdminPassword(req, res) {
   const user = await User.findById(req.user.id).select("+password");

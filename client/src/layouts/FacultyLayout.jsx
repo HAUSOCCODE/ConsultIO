@@ -2,7 +2,6 @@ import {
   Bell,
   CalendarClock,
   CalendarDays,
-  CheckSquare,
   ClipboardList,
   History,
   LayoutDashboard,
@@ -27,7 +26,6 @@ const navigation = [
     label: "Manage Availability",
     path: "/faculty/availability",
   },
-  { icon: CheckSquare, label: "My Tasks / Follow-ups", path: "/faculty/tasks" },
   { icon: Bell, label: "Notifications", path: "/faculty/notifications" },
   { icon: UserRound, label: "Profile", path: "/faculty/profile" },
 ];

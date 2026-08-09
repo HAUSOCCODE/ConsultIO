@@ -3,10 +3,11 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading, StatusBadge } from "../UI";
-import Pagination, { ITEMS_PER_PAGE } from "../Pagination";
+import Pagination from "../Pagination";
 import AppointmentRequestDetailsModal from "./AppointmentRequestDetailsModal";
 import StudentAppointmentDetailsModal from "./StudentAppointmentDetailsModal";
 import FacultyAppointmentDetailsModal from "./FacultyAppointmentDetailsModal";
+const HISTORY_ITEMS_PER_PAGE = 6;
 export default function AppointmentsPage({ filter }) {
   const { user } = useAuth();
   const [items, setItems] = useState(null);
@@ -124,7 +125,10 @@ export default function AppointmentsPage({ filter }) {
   if (filter === "requests")
     shown = items.filter((x) => x.status === "Pending");
   if (filter === "history") {
-    const historical = ["Completed", "Approved", "Rejected", "Cancelled"];
+    const historical =
+      user.role === "student"
+        ? ["Completed", "Approved", "Rejected", "Cancelled"]
+        : ["Completed", "Rejected", "Cancelled"];
     shown = items.filter((x) =>
       historyTab === "All"
         ? historical.includes(x.status)
@@ -278,7 +282,7 @@ export default function AppointmentsPage({ filter }) {
           onClose={() => setDetails(null)}
         />
       )}
-      {details && user.role === "faculty" && !filter && (
+      {details && user.role === "faculty" && filter !== "requests" && (
         <FacultyAppointmentDetailsModal
           appointment={details}
           onClose={() => setDetails(null)}
@@ -287,31 +291,6 @@ export default function AppointmentsPage({ filter }) {
           }}
         />
       )}
-      {details &&
-        filter !== "requests" &&
-        user.role !== "student" &&
-        filter && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex justify-between gap-4">
-              <div>
-                <p className="font-bold text-maroon-900">{details.subject}</p>
-                <p className="mt-2 text-sm text-slate-600">{details.reason}</p>
-                {details.responseNote && (
-                  <p className="mt-2 text-sm">
-                    Faculty response: {details.responseNote}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetails(null)}
-                className="text-sm font-bold text-maroon-800"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
       {cancelTarget &&
         createPortal(
           <div
@@ -449,23 +428,21 @@ export default function AppointmentsPage({ filter }) {
           </div>
         </div>
       )}
-      {shown.length === 0 ? (
-        <EmptyState
-          title={
-            filter === "history"
-              ? historyTab === "All"
-                ? "No consultation history yet"
-                : `No ${historyTab.toLowerCase()} consultations found`
-              : "No current appointments"
-          }
-        />
-      ) : filter === "history" && user.role === "student" ? (
-        <StudentHistoryTable
+      {filter === "history" ? (
+        <ConsultationHistoryTable
           appointments={shown}
           currentPage={historyPage}
           onPageChange={setHistoryPage}
           onView={setDetails}
+          role={user.role}
+          emptyTitle={
+            historyTab === "All"
+              ? "No consultation records found."
+              : `No ${historyTab.toLowerCase()} consultation records found.`
+          }
         />
+      ) : shown.length === 0 ? (
+        <EmptyState title="No current appointments" />
       ) : (
         <div className="grid gap-4">
           {shown.map((x) => (
@@ -596,6 +573,7 @@ export default function AppointmentsPage({ filter }) {
                     )}
                   {x.supportingDocument?.name &&
                     filter !== "requests" &&
+                    filter !== "history" &&
                     user.role !== "student" && (
                       <button
                         type="button"
@@ -626,21 +604,30 @@ function Capacity({ label, value, wide = false }) {
   );
 }
 
-function StudentHistoryTable({
+function ConsultationHistoryTable({
   appointments,
   currentPage,
   onPageChange,
   onView,
+  role,
+  emptyTitle,
 }) {
   const totalPages = Math.max(
     1,
-    Math.ceil(appointments.length / ITEMS_PER_PAGE),
+    Math.ceil(appointments.length / HISTORY_ITEMS_PER_PAGE),
   );
   const safePage = Math.min(currentPage, totalPages);
   const pageAppointments = appointments.slice(
-    (safePage - 1) * ITEMS_PER_PAGE,
-    safePage * ITEMS_PER_PAGE,
+    (safePage - 1) * HISTORY_ITEMS_PER_PAGE,
+    safePage * HISTORY_ITEMS_PER_PAGE,
   );
+  const emptyRows = Math.max(
+    0,
+    HISTORY_ITEMS_PER_PAGE - pageAppointments.length,
+  );
+  const personLabel = role === "faculty" ? "Student" : "Faculty";
+  const personFor = (appointment) =>
+    role === "faculty" ? appointment.student : appointment.faculty;
   useEffect(() => {
     if (currentPage > totalPages) onPageChange(totalPages);
   }, [currentPage, onPageChange, totalPages]);
@@ -669,7 +656,7 @@ function StudentHistoryTable({
               <th className="w-[21%] px-4 py-3 font-semibold">
                 Subject / Topic
               </th>
-              <th className="w-[15%] px-4 py-3 font-semibold">Faculty</th>
+              <th className="w-[15%] px-4 py-3 font-semibold">{personLabel}</th>
               <th className="w-[12%] px-4 py-3 font-semibold">Mode</th>
               <th className="w-[13%] px-4 py-3 font-semibold">
                 Estimated Time
@@ -679,108 +666,134 @@ function StudentHistoryTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {pageAppointments.map((appointment) => (
-              <tr
-                key={appointment._id}
-                className="align-middle hover:bg-slate-50"
-              >
-                <td className="px-4 py-4 text-slate-600">
-                  {date(appointment.startAt)}
-                </td>
-                <td className="px-4 py-4">
-                  <p
-                    className="truncate font-semibold text-slate-900"
-                    title={appointment.subject}
-                  >
-                    {appointment.subject || "Consultation"}
-                  </p>
-                </td>
-                <td
-                  className="truncate px-4 py-4 text-slate-700"
-                  title={appointment.faculty?.name}
-                >
-                  {appointment.faculty?.name || "Not provided"}
-                </td>
-                <td className="px-4 py-4 text-slate-600">
-                  {appointment.consultationMode || "Not provided"}
-                </td>
-                <td className="px-4 py-4 text-slate-600">
-                  {duration(appointment)}
-                </td>
-                <td className="px-4 py-4">
-                  <StatusBadge status={appointment.status} />
-                </td>
-                <td className="px-4 py-4">
-                  <button
-                    type="button"
-                    onClick={() => onView(appointment)}
-                    className="text-sm font-bold text-maroon-800 hover:underline"
-                  >
-                    View Details
-                  </button>
+            {appointments.length === 0 ? (
+              <tr className="h-[336px] bg-white">
+                <td colSpan={7} className="text-center text-sm text-slate-500">
+                  {emptyTitle}
                 </td>
               </tr>
-            ))}
+            ) : (
+              pageAppointments.map((appointment) => (
+                <tr
+                  key={appointment._id}
+                  className="h-14 align-middle hover:bg-slate-50"
+                >
+                  <td className="h-14 px-4 py-0 text-slate-600">
+                    {date(appointment.startAt)}
+                  </td>
+                  <td className="h-14 px-4 py-0">
+                    <p
+                      className="truncate font-semibold text-slate-900"
+                      title={appointment.subject}
+                    >
+                      {appointment.subject || "Consultation"}
+                    </p>
+                  </td>
+                  <td
+                    className="h-14 truncate px-4 py-0 text-slate-700"
+                    title={personFor(appointment)?.name}
+                  >
+                    {personFor(appointment)?.name || "Not provided"}
+                  </td>
+                  <td className="h-14 px-4 py-0 text-slate-600">
+                    {appointment.consultationMode || "Not provided"}
+                  </td>
+                  <td className="h-14 px-4 py-0 text-slate-600">
+                    {duration(appointment)}
+                  </td>
+                  <td className="h-14 px-4 py-0">
+                    <StatusBadge status={appointment.status} />
+                  </td>
+                  <td className="h-14 px-4 py-0">
+                    <button
+                      type="button"
+                      onClick={() => onView(appointment)}
+                      className="text-sm font-bold text-maroon-800 hover:underline"
+                    >
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+            {appointments.length > 0 &&
+              Array.from({ length: emptyRows }, (_, index) => (
+                <tr
+                  key={`empty-consultation-row-${index}`}
+                  aria-hidden="true"
+                  className="h-14 bg-white"
+                >
+                  <td colSpan={7} />
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
 
       <div className="grid gap-3 md:hidden">
-        {pageAppointments.map((appointment) => (
-          <article
-            key={appointment._id}
-            className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-bold text-slate-900">
-                  {appointment.subject || "Consultation"}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {appointment.faculty?.name || "Faculty not provided"}
-                </p>
-              </div>
-              <StatusBadge status={appointment.status} />
-            </div>
-            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <dt className="text-xs font-semibold uppercase text-slate-500">
-                  Date
-                </dt>
-                <dd className="mt-1">{date(appointment.startAt)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase text-slate-500">
-                  Mode
-                </dt>
-                <dd className="mt-1">
-                  {appointment.consultationMode || "Not provided"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase text-slate-500">
-                  Estimated Time
-                </dt>
-                <dd className="mt-1">{duration(appointment)}</dd>
-              </div>
-            </dl>
-            <button
-              type="button"
-              onClick={() => onView(appointment)}
-              className="mt-4 w-full rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+        {appointments.length === 0 ? (
+          <EmptyState title={emptyTitle} />
+        ) : (
+          pageAppointments.map((appointment) => (
+            <article
+              key={appointment._id}
+              className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              View Details
-            </button>
-          </article>
-        ))}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-slate-900">
+                    {appointment.subject || "Consultation"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {personFor(appointment)?.name ||
+                      `${personLabel} not provided`}
+                  </p>
+                </div>
+                <StatusBadge status={appointment.status} />
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-xs font-semibold uppercase text-slate-500">
+                    Date
+                  </dt>
+                  <dd className="mt-1">{date(appointment.startAt)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase text-slate-500">
+                    Mode
+                  </dt>
+                  <dd className="mt-1">
+                    {appointment.consultationMode || "Not provided"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase text-slate-500">
+                    Estimated Time
+                  </dt>
+                  <dd className="mt-1">{duration(appointment)}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                onClick={() => onView(appointment)}
+                className="mt-4 w-full rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+              >
+                View Details
+              </button>
+            </article>
+          ))
+        )}
       </div>
-      <div className="overflow-hidden rounded-b-2xl border border-t-0 border-slate-200">
-        <Pagination
-          currentPage={safePage}
-          totalItems={appointments.length}
-          onPageChange={onPageChange}
-        />
-      </div>
+      {appointments.length > 0 && (
+        <div className="overflow-hidden rounded-b-2xl border border-t-0 border-slate-200">
+          <Pagination
+            currentPage={safePage}
+            totalItems={appointments.length}
+            onPageChange={onPageChange}
+            itemsPerPage={HISTORY_ITEMS_PER_PAGE}
+          />
+        </div>
+      )}
     </>
   );
 }

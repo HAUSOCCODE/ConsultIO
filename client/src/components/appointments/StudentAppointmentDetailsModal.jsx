@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
+import OnlineMeetingDetails from "./OnlineMeetingDetails";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -69,21 +70,27 @@ export default function StudentAppointmentDetailsModal({
           <div className="grid gap-6 md:grid-cols-2">
             <Section title="Consultation Information">
               <Detail label="Subject / Topic" value={appointment.subject} />
-              <Detail label="Status" value={appointment.status} />
+              <Detail
+                label="Year Level"
+                value={appointment.yearLevel || appointment.student?.yearLevel}
+              />
+              <Detail
+                label="Estimated Consultation Time"
+                value={
+                  appointment.estimatedDurationMinutes
+                    ? `${appointment.estimatedDurationMinutes} minutes`
+                    : "Not provided"
+                }
+              />
               <Detail
                 label="Reason for Consultation"
                 value={appointment.reason}
                 wide
               />
+              <Detail label="Status" value={appointment.status} />
               <Detail
-                label="Optional Notes"
-                value={appointment.notes || "No optional notes were provided."}
-                wide
-              />
-              <Detail
-                label="Date Request Was Submitted"
+                label="Date Submitted"
                 value={safeDate(appointment.createdAt)}
-                wide
               />
             </Section>
             <Section title="Faculty Information">
@@ -115,19 +122,21 @@ export default function StudentAppointmentDetailsModal({
               value={`${clock(appointment.startAt)} – ${clock(appointment.endAt)}`}
             />
             <Detail
-              label="Estimated Consultation Time"
-              value={
-                appointment.estimatedDurationMinutes
-                  ? `${appointment.estimatedDurationMinutes} minutes`
-                  : "Not provided"
-              }
-            />
-            <Detail
               label="Consultation Mode"
               value={appointment.consultationMode}
             />
-            <Detail label="Location / Platform" value={appointment.location} />
+            {appointment.consultationMode === "Face-to-Face" && (
+              <Detail label="Location" value={appointment.location} />
+            )}
           </Section>
+
+          <OnlineMeetingDetails
+            appointment={appointment}
+            allowLink={["Approved", "Rescheduled", "Completed"].includes(
+              appointment.status,
+            )}
+            actionLabel="Join Meeting"
+          />
 
           {appointment.status === "Rejected" && appointment.responseNote && (
             <Section title="Status Details">

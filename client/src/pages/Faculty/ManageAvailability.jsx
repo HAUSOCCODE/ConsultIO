@@ -8,6 +8,20 @@ const emptyForm = {
   endTime: "",
   mode: "Face-to-Face",
   location: "",
+  meetingPlatform: "Google Meet",
+  customMeetingPlatform: "",
+  meetingLink: "",
+};
+
+const meetingPlatforms = ["Google Meet", "Microsoft Teams", "Zoom", "Other"];
+
+const validMeetingLink = (value) => {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
 };
 
 const localParts = (value) => {
@@ -80,6 +94,26 @@ export default function ManageAvailability() {
       setFormError("Start time must be later than the current time.");
       return;
     }
+    const meetingPlatform =
+      form.meetingPlatform === "Other"
+        ? form.customMeetingPlatform.trim()
+        : form.meetingPlatform;
+    if (form.mode === "Face-to-Face" && !form.location.trim()) {
+      setFormError("Location is required for face-to-face availability.");
+      return;
+    }
+    if (form.mode === "Online" && !meetingPlatform) {
+      setFormError("Meeting platform is required for online availability.");
+      return;
+    }
+    if (
+      form.mode === "Online" &&
+      form.meetingLink.trim() &&
+      !validMeetingLink(form.meetingLink.trim())
+    ) {
+      setFormError("Please enter a valid meeting link.");
+      return;
+    }
     setSaving(true);
     try {
       const data = await api(
@@ -90,9 +124,9 @@ export default function ManageAvailability() {
             startAt: toTimestamp(form.date, form.startTime),
             endAt: toTimestamp(form.date, form.endTime),
             mode: form.mode,
-            location:
-              form.location.trim() ||
-              (form.mode === "Online" ? "Online consultation" : ""),
+            location: form.mode === "Face-to-Face" ? form.location.trim() : "",
+            meetingPlatform: form.mode === "Online" ? meetingPlatform : "",
+            meetingLink: form.mode === "Online" ? form.meetingLink.trim() : "",
           }),
         },
       );
@@ -110,12 +144,21 @@ export default function ManageAvailability() {
     const start = localParts(item.startAt);
     const end = localParts(item.endAt);
     setEditingId(item._id);
+    const platform = item.meetingPlatform || "";
+    const knownPlatform = meetingPlatforms.includes(platform);
     setForm({
       date: start.date,
       startTime: start.time,
       endTime: end.time,
       mode: item.mode || "Online",
       location: item.location || "",
+      meetingPlatform: knownPlatform
+        ? platform
+        : platform
+          ? "Other"
+          : "Google Meet",
+      customMeetingPlatform: knownPlatform ? "" : platform,
+      meetingLink: item.meetingLink || "",
     });
     setMessage("");
     setFormError("");
@@ -149,8 +192,6 @@ export default function ManageAvailability() {
   if (loadError) return <ErrorState message={loadError} onRetry={load} />;
   if (!availability) return <Loading />;
 
-  const locationLabel =
-    form.mode === "Online" ? "Meeting Platform / Link" : "Location";
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -213,29 +254,94 @@ export default function ManageAvailability() {
             <select
               className="field mt-2"
               value={form.mode}
-              onChange={(event) =>
-                setForm({ ...form, mode: event.target.value })
-              }
+              onChange={(event) => {
+                const mode = event.target.value;
+                setForm({
+                  ...form,
+                  mode,
+                  location: mode === "Face-to-Face" ? form.location : "",
+                  meetingPlatform:
+                    mode === "Online"
+                      ? form.meetingPlatform || "Google Meet"
+                      : "Google Meet",
+                  customMeetingPlatform:
+                    mode === "Online" ? form.customMeetingPlatform : "",
+                  meetingLink: mode === "Online" ? form.meetingLink : "",
+                });
+                setFormError("");
+              }}
             >
               <option value="Face-to-Face">Face-to-Face</option>
               <option value="Online">Online</option>
             </select>
           </Field>
-          <Field label={locationLabel}>
-            <input
-              className="field mt-2"
-              required={form.mode === "Face-to-Face"}
-              placeholder={
-                form.mode === "Online"
-                  ? "Google Meet / Microsoft Teams"
-                  : "SJH Building - Room 204"
-              }
-              value={form.location}
-              onChange={(event) =>
-                setForm({ ...form, location: event.target.value })
-              }
-            />
-          </Field>
+          {form.mode === "Face-to-Face" ? (
+            <Field label="Location">
+              <input
+                className="field mt-2"
+                required
+                placeholder="SJH Building - Room 104"
+                value={form.location}
+                onChange={(event) =>
+                  setForm({ ...form, location: event.target.value })
+                }
+              />
+            </Field>
+          ) : (
+            <>
+              <Field label="Meeting Platform">
+                <select
+                  className="field mt-2"
+                  required
+                  value={form.meetingPlatform}
+                  onChange={(event) => {
+                    setForm({
+                      ...form,
+                      meetingPlatform: event.target.value,
+                      customMeetingPlatform:
+                        event.target.value === "Other"
+                          ? form.customMeetingPlatform
+                          : "",
+                    });
+                    setFormError("");
+                  }}
+                >
+                  {meetingPlatforms.map((platform) => (
+                    <option key={platform} value={platform}>
+                      {platform}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {form.meetingPlatform === "Other" && (
+                <Field label="Platform Name">
+                  <input
+                    className="field mt-2"
+                    required
+                    placeholder="Enter meeting platform"
+                    value={form.customMeetingPlatform}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        customMeetingPlatform: event.target.value,
+                      })
+                    }
+                  />
+                </Field>
+              )}
+              <Field label="Meeting Link">
+                <input
+                  className="field mt-2"
+                  type="url"
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                  value={form.meetingLink}
+                  onChange={(event) =>
+                    setForm({ ...form, meetingLink: event.target.value })
+                  }
+                />
+              </Field>
+            </>
+          )}
           <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
             <button
               disabled={saving}
@@ -304,7 +410,11 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
         {new Date(item.endAt).toLocaleTimeString([], timeOptions)}
       </p>
       <p className="mt-3 text-sm text-slate-600">{item.mode || "Online"}</p>
-      <p className="mt-1 break-words text-sm text-slate-500">{item.location}</p>
+      <p className="mt-1 break-words text-sm text-slate-500">
+        {item.mode === "Online"
+          ? item.meetingPlatform || "Meeting platform not provided"
+          : item.location || "Location not provided"}
+      </p>
       <p
         className={`mt-3 text-xs font-bold ${item.isActive ? "text-green-700" : "text-slate-500"}`}
       >

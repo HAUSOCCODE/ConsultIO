@@ -135,7 +135,7 @@ export default function NotificationsPage({ compact = false }) {
       ) : notifications.length === 0 ? (
         <EmptyState
           title="No notifications yet."
-          text="Updates about your consultations and assigned tasks will appear here."
+          text="Updates about your consultations will appear here."
         />
       ) : (
         <div className="space-y-3">
@@ -497,17 +497,12 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
         className="w-full max-w-xl rounded-2xl bg-white shadow-2xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-gold-600">
-              {typeLabel(notification)}
-            </p>
-            <h2
-              id="notification-details-title"
-              className="mt-1 text-xl font-bold text-maroon-900"
-            >
-              {notification.title || "ConsultIO Notification"}
-            </h2>
-          </div>
+          <h2
+            id="notification-details-title"
+            className="text-xl font-bold text-maroon-900"
+          >
+            Notification Details
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -518,6 +513,24 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
           </button>
         </header>
         <div className="space-y-5 px-5 py-5 sm:px-6">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold uppercase text-slate-500">
+                Type
+              </dt>
+              <dd className="mt-1 text-sm text-slate-800">
+                {typeLabel(notification)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase text-slate-500">
+                Title
+              </dt>
+              <dd className="mt-1 text-sm font-semibold text-slate-800">
+                {notification.title || "ConsultIO Notification"}
+              </dd>
+            </div>
+          </dl>
           <div>
             <p className="text-xs font-semibold uppercase text-slate-500">
               Full Message

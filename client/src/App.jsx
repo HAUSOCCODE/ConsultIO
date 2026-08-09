@@ -20,7 +20,6 @@ import FacultyAppointments from "./pages/Faculty/FacultyAppointments";
 import AppointmentRequests from "./pages/Faculty/AppointmentRequests";
 import FacultyHistory from "./pages/Faculty/FacultyConsultationHistory";
 import ManageAvailability from "./pages/Faculty/ManageAvailability";
-import FacultyTasks from "./pages/Faculty/FacultyTasks";
 import FacultyNotifications from "./pages/Faculty/FacultyNotifications";
 import FacultyProfile from "./pages/Faculty/FacultyProfile";
 import AdminLayout from "./layouts/AdminLayout";
@@ -29,7 +28,6 @@ import UserManagement from "./pages/Admin/UserManagement";
 import ConsultationOverview from "./pages/Admin/ConsultationOverview";
 import AppointmentsManagement from "./pages/Admin/AppointmentsManagement";
 import ReportsAnalytics from "./pages/Admin/ReportsAnalytics";
-import AuditLogs from "./pages/Admin/AuditLogs";
 import SystemSettings from "./pages/Admin/SystemSettings";
 import NotFoundPage from "./pages/Public/NotFoundPage";
 export default function App() {
@@ -69,7 +67,6 @@ export default function App() {
           <Route path="requests" element={<AppointmentRequests />} />
           <Route path="history" element={<FacultyHistory />} />
           <Route path="availability" element={<ManageAvailability />} />
-          <Route path="tasks" element={<FacultyTasks />} />
           <Route path="notifications" element={<FacultyNotifications />} />
           <Route path="profile" element={<FacultyProfile />} />
           <Route
@@ -90,7 +87,10 @@ export default function App() {
           <Route path="consultations" element={<ConsultationOverview />} />
           <Route path="appointments" element={<AppointmentsManagement />} />
           <Route path="reports" element={<ReportsAnalytics />} />
-          <Route path="logs" element={<AuditLogs />} />
+          <Route
+            path="logs"
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
           <Route path="settings" element={<SystemSettings />} />
           <Route
             path="*"
