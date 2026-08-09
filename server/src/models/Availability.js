@@ -1,0 +1,30 @@
+import mongoose from "mongoose";
+
+const availabilitySchema = new mongoose.Schema(
+  {
+    faculty: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    startAt: { type: Date, required: true, index: true },
+    endAt: { type: Date, required: true },
+    location: {
+      type: String,
+      trim: true,
+      maxlength: 150,
+      default: "Online consultation",
+    },
+    mode: {
+      type: String,
+      enum: ["Face-to-Face", "Online"],
+      default: "Online",
+    },
+    isActive: { type: Boolean, default: true, index: true },
+  },
+  { timestamps: true },
+);
+
+availabilitySchema.index({ faculty: 1, startAt: 1, endAt: 1 });
+export default mongoose.model("Availability", availabilitySchema);

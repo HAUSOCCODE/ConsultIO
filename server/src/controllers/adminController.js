@@ -1,0 +1,200 @@
+import bcrypt from "bcryptjs";
+import User from "../models/User.js";
+import Appointment from "../models/Appointment.js";
+import AuditLog from "../models/AuditLog.js";
+import { logActivity, notify } from "../services/activityService.js";
+
+const managedRoles = ["student", "faculty"];
+
+export async function getRegistrations(req, res) {
+  const registrations = await User.find({
+    role: { $in: managedRoles },
+    registrationStatus: req.query.status || "Pending",
+  })
+    .select("-password")
+    .sort({ createdAt: -1 });
+  res.json({ registrations });
+}
+export async function getRegistration(req, res) {
+  const registration = await User.findOne({
+    _id: req.params.id,
+    role: { $in: managedRoles },
+  }).select("-password");
+  if (!registration)
+    return res.status(404).json({ message: "Registration not found." });
+  res.json({ registration });
+}
+export async function approveRegistration(req, res) {
+  const user = await User.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      role: { $in: managedRoles },
+      registrationStatus: "Pending",
+    },
+    {
+      $set: {
+        registrationStatus: "Approved",
+        accountStatus: "Active",
+        approvedAt: new Date(),
+        approvedBy: req.user.id,
+      },
+      $unset: { rejectedAt: 1, rejectedBy: 1, rejectionReason: 1 },
+    },
+    { new: true },
+  ).select("-password");
+  if (!user)
+    return res
+      .status(409)
+      .json({ message: "This registration is no longer pending." });
+  await Promise.all([
+    logActivity("registration_approved", req.user.id, "User", user.id, {
+      role: user.role,
+    }),
+    notify(
+      user.id,
+      "registration",
+      "Registration approved",
+      "Your ConsultIO account has been approved. You may now log in.",
+      user.id,
+    ),
+  ]);
+  res.json({
+    message: "Registration approved successfully.",
+    registration: user,
+  });
+}
+export async function rejectRegistration(req, res) {
+  const reason = (req.body.reason || "").trim();
+  const user = await User.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      role: { $in: managedRoles },
+      registrationStatus: "Pending",
+    },
+    {
+      $set: {
+        registrationStatus: "Rejected",
+        accountStatus: "Inactive",
+        rejectedAt: new Date(),
+        rejectedBy: req.user.id,
+        rejectionReason: reason,
+      },
+    },
+    { new: true },
+  ).select("-password");
+  if (!user)
+    return res
+      .status(409)
+      .json({ message: "This registration is no longer pending." });
+  await Promise.all([
+    logActivity("registration_rejected", req.user.id, "User", user.id, {
+      role: user.role,
+      reason,
+    }),
+    notify(
+      user.id,
+      "registration",
+      "Registration rejected",
+      reason || "Please contact the School of Computing administrator.",
+      user.id,
+    ),
+  ]);
+  res.json({ message: "Registration rejected.", registration: user });
+}
+export async function getUsers(_req, res) {
+  res.json({
+    users: await User.find({ role: { $ne: "admin" } })
+      .select("-password")
+      .sort({ createdAt: -1 }),
+  });
+}
+export async function getUser(req, res) {
+  const user = await User.findOne({
+    _id: req.params.id,
+    role: { $in: managedRoles },
+  }).select("-password");
+  if (!user) return res.status(404).json({ message: "User not found." });
+  res.json({ user });
+}
+export async function resetUserPassword(req, res) {
+  const newPassword = req.body.newPassword || "";
+  const confirmPassword = req.body.confirmPassword || "";
+  if (!newPassword || !confirmPassword)
+    return res
+      .status(400)
+      .json({ message: "New password and confirmation are required." });
+  if (newPassword !== confirmPassword)
+    return res.status(400).json({ message: "Passwords do not match." });
+  if (
+    newPassword.length < 8 ||
+    /\s/.test(newPassword) ||
+    !/[A-Z]/.test(newPassword) ||
+    !/[0-9]/.test(newPassword)
+  )
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include one uppercase letter and one number. Spaces are not allowed.",
+    });
+  const user = await User.findOne({
+    _id: req.params.id,
+    role: { $in: managedRoles },
+  });
+  if (!user) return res.status(404).json({ message: "User not found." });
+  user.password = await bcrypt.hash(newPassword, 12);
+  user.passwordChangedAt = new Date();
+  await user.save();
+  await logActivity("admin_password_reset", req.user.id, "User", user.id, {
+    role: user.role,
+  });
+  res.json({ message: "Password reset successfully." });
+}
+export async function updateUserStatus(req, res) {
+  if (!["Active", "Inactive"].includes(req.body.accountStatus))
+    return res.status(400).json({ message: "Invalid account status." });
+  const user = await User.findOneAndUpdate(
+    { _id: req.params.id, role: { $ne: "admin" } },
+    { accountStatus: req.body.accountStatus },
+    { new: true },
+  ).select("-password");
+  if (!user) return res.status(404).json({ message: "User not found." });
+  await logActivity(
+    req.body.accountStatus === "Active"
+      ? "account_activated"
+      : "account_deactivated",
+    req.user.id,
+    "User",
+    user.id,
+  );
+  res.json({
+    message: `Account ${req.body.accountStatus.toLowerCase()}.`,
+    user,
+  });
+}
+export async function getAdminAppointments(_req, res) {
+  const appointments = await Appointment.find()
+    .populate("student", "name email program")
+    .populate("faculty", "name email department")
+    .sort({ createdAt: -1 });
+  res.json({ appointments });
+}
+export async function getAuditLogs(_req, res) {
+  const logs = await AuditLog.find()
+    .populate("actor", "name role")
+    .sort({ createdAt: -1 })
+    .limit(200);
+  res.json({ logs });
+}
+export async function changeAdminPassword(req, res) {
+  const user = await User.findById(req.user.id).select("+password");
+  if (!(await bcrypt.compare(req.body.currentPassword || "", user.password)))
+    return res.status(400).json({ message: "Current password is incorrect." });
+  if ((req.body.newPassword || "").length < 8)
+    return res
+      .status(400)
+      .json({ message: "New password must contain at least 8 characters." });
+  user.password = await bcrypt.hash(req.body.newPassword, 12);
+  user.passwordChangedAt = new Date();
+  await user.save();
+  await logActivity("password_changed", user.id, "User", user.id);
+  res.json({ message: "Password changed successfully." });
+}

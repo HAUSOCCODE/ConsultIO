@@ -1,0 +1,737 @@
+import "dotenv/config";
+import mongoose from "mongoose";
+import app from "../src/app.js";
+import User from "../src/models/User.js";
+import Appointment from "../src/models/Appointment.js";
+import Availability from "../src/models/Availability.js";
+import Notification from "../src/models/Notification.js";
+import AuditLog from "../src/models/AuditLog.js";
+import SupportingDocument from "../src/models/SupportingDocument.js";
+import bcrypt from "bcryptjs";
+
+const base = "http://127.0.0.1:5055/api";
+const stamp = Date.now();
+const facultyEmail = `consultio.qa.faculty.${stamp}@faculty.hau.edu.ph`;
+const studentEmail = `consultio.qa.student.${stamp}@student.hau.edu.ph`;
+const password = "ConsultIO-QA-2026!";
+const createdUsers = [];
+let server;
+const check = (condition, label) => {
+  if (!condition) throw new Error(`FAILED: ${label}`);
+  console.log(`PASS: ${label}`);
+};
+async function request(path, { method = "GET", body, token } = {}) {
+  const multipart = body instanceof FormData;
+  const response = await fetch(`${base}${path}`, {
+    method,
+    headers: {
+      ...(!multipart && { "Content-Type": "application/json" }),
+      Connection: "close",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    ...(body && { body: multipart ? body : JSON.stringify(body) }),
+  });
+  const data = await response.json();
+  return { status: response.status, data };
+}
+const startHttp = () =>
+  new Promise((resolve) => {
+    server = app.listen(5055, "127.0.0.1", resolve);
+  });
+const stopHttp = () => new Promise((resolve) => server.close(resolve));
+
+try {
+  await mongoose.connect(process.env.MONGODB_URI);
+  await User.updateMany(
+    {
+      role: { $in: ["student", "faculty"] },
+      registrationStatus: { $exists: false },
+    },
+    [
+      {
+        $set: {
+          registrationStatus: { $cond: ["$isApproved", "Approved", "Pending"] },
+          accountStatus: { $cond: ["$isActive", "Active", "Inactive"] },
+        },
+      },
+    ],
+  );
+  await User.updateMany(
+    { role: "admin", registrationStatus: { $exists: false } },
+    { $set: { registrationStatus: "Approved", accountStatus: "Active" } },
+  );
+  await startHttp();
+  const adminDoc = await User.findOne({ role: "admin" }).select(
+    "+password passwordChangedAt",
+  );
+  check(Boolean(adminDoc), "pre-created administrator exists");
+  const originalAdminHash = adminDoc.password;
+  const originalChangedAt = adminDoc.passwordChangedAt;
+
+  const invalidAdminPassword = await request("/auth/login/admin", {
+    method: "POST",
+    body: { identifier: process.env.ADMIN_USERNAME, password: "weak pass1" },
+  });
+  check(
+    invalidAdminPassword.status === 400 &&
+      invalidAdminPassword.data.message.includes("Spaces are not allowed"),
+    "administrator login rejects passwords that violate complexity rules",
+  );
+
+  for (const test of [
+    {
+      role: "faculty",
+      email: facultyEmail,
+      name: "ConsultIO QA Faculty",
+      employeeId: `QA-F-${stamp}`,
+      department: "School of Computing",
+    },
+    {
+      role: "student",
+      email: studentEmail,
+      name: "ConsultIO QA Student",
+      studentId: `QA-S-${stamp}`,
+      program: "Bachelor of Science in Information Technology",
+    },
+  ]) {
+    if (test.role === "faculty") {
+      const invalidFacultyPassword = await request("/auth/register/faculty", {
+        method: "POST",
+        body: { ...test, password: "weak pass1" },
+      });
+      check(
+        invalidFacultyPassword.status === 400 &&
+          invalidFacultyPassword.data.message.includes(
+            "Spaces are not allowed",
+          ),
+        "faculty registration rejects passwords that violate complexity rules",
+      );
+    }
+    if (test.role === "student") {
+      const invalidPassword = await request("/auth/register/student", {
+        method: "POST",
+        body: { ...test, password: "weak pass1" },
+      });
+      check(
+        invalidPassword.status === 400 &&
+          invalidPassword.data.message.includes("Spaces are not allowed"),
+        "student registration rejects passwords that violate complexity rules",
+      );
+      const invalidProgram = await request("/auth/register/student", {
+        method: "POST",
+        body: { ...test, program: "Unlisted program", password },
+      });
+      check(
+        invalidProgram.status === 400 &&
+          invalidProgram.data.message === "Please select your program.",
+        "student registration rejects an unsupported program",
+      );
+    }
+    const registered = await request(`/auth/register/${test.role}`, {
+      method: "POST",
+      body: { ...test, password },
+    });
+    check(registered.status === 201, `${test.role} registration succeeds`);
+    createdUsers.push(registered.data.user.id);
+    const stored = await User.findById(registered.data.user.id);
+    check(
+      stored.registrationStatus === "Pending" &&
+        stored.accountStatus === "Inactive",
+      `${test.role} saved Pending/Inactive`,
+    );
+    const pendingLogin = await request(`/auth/login/${test.role}`, {
+      method: "POST",
+      body: { identifier: test.email, password },
+    });
+    check(
+      pendingLogin.status === 403 &&
+        pendingLogin.data.message ===
+          "Your account has already been created. Please wait for an administrator to approve your registration before you can access ConsultIO. You do not need to register again.",
+      `${test.role} pending login is denied with exact message`,
+    );
+    const duplicate = await request(`/auth/register/${test.role}`, {
+      method: "POST",
+      body: { ...test, password },
+    });
+    check(
+      duplicate.status === 409 &&
+        duplicate.data.message ===
+          "An account with this email has already been created and is awaiting administrator approval. You do not need to register again.",
+      `${test.role} duplicate pending registration is rejected`,
+    );
+  }
+
+  const adminLogin = await request("/auth/login/admin", {
+    method: "POST",
+    body: {
+      identifier: process.env.ADMIN_USERNAME,
+      password: process.env.ADMIN_PASSWORD,
+    },
+  });
+  check(adminLogin.status === 200, "administrator login succeeds");
+  const adminToken = adminLogin.data.token;
+  const pending = await request("/admin/registrations?status=Pending", {
+    token: adminToken,
+  });
+  check(
+    [facultyEmail, studentEmail].every((email) =>
+      pending.data.registrations.some((x) => x.email === email),
+    ),
+    "both QA registrations appear in admin requests",
+  );
+  for (const id of createdUsers) {
+    const approval = await request(`/admin/registrations/${id}/approve`, {
+      method: "PUT",
+      token: adminToken,
+      body: {},
+    });
+    check(approval.status === 200, "administrator approval succeeds");
+  }
+  const approved = await User.find({ _id: { $in: createdUsers } });
+  check(
+    approved.every(
+      (x) =>
+        x.registrationStatus === "Approved" &&
+        x.accountStatus === "Active" &&
+        String(x.approvedBy) === String(adminDoc.id),
+    ),
+    "approval is permanently stored with approver",
+  );
+  for (const [index, role] of ["faculty", "student"].entries()) {
+    const details = await request(`/admin/users/${createdUsers[index]}`, {
+      token: adminToken,
+    });
+    check(
+      details.status === 200 &&
+        details.data.user.role === role &&
+        !("password" in details.data.user),
+      `administrator views complete ${role} details without password data`,
+    );
+  }
+
+  const approvedDuplicate = await request("/auth/register/student", {
+    method: "POST",
+    body: {
+      role: "student",
+      email: studentEmail,
+      name: "ConsultIO QA Student",
+      studentId: `QA-S-${stamp}`,
+      program: "Bachelor of Science in Information Technology",
+      password,
+    },
+  });
+  check(
+    approvedDuplicate.status === 409 &&
+      approvedDuplicate.data.message ===
+        "An account with this email already exists. Please log in.",
+    "approved student duplicate registration is rejected",
+  );
+
+  await User.updateOne(
+    { _id: createdUsers[1] },
+    { registrationStatus: "Rejected", accountStatus: "Inactive" },
+  );
+  const rejectedLogin = await request("/auth/login/student", {
+    method: "POST",
+    body: { identifier: studentEmail, password },
+  });
+  check(
+    rejectedLogin.status === 403 &&
+      rejectedLogin.data.message ===
+        "Your registration was not approved. Please contact the system administrator if you believe this requires review.",
+    "rejected student receives the rejected-account message",
+  );
+  await User.updateOne(
+    { _id: createdUsers[1] },
+    { registrationStatus: "Approved", accountStatus: "Inactive" },
+  );
+  const inactiveLogin = await request("/auth/login/student", {
+    method: "POST",
+    body: { identifier: studentEmail, password },
+  });
+  check(
+    inactiveLogin.status === 403 &&
+      inactiveLogin.data.message ===
+        "Your account is currently inactive. Please contact the system administrator for assistance.",
+    "inactive student receives the inactive-account message",
+  );
+  await User.updateOne(
+    { _id: createdUsers[1] },
+    { registrationStatus: "Approved", accountStatus: "Active" },
+  );
+
+  const facultyLogin = await request("/auth/login/faculty", {
+    method: "POST",
+    body: { identifier: facultyEmail, password },
+  });
+  const studentLogin = await request("/auth/login/student", {
+    method: "POST",
+    body: { identifier: studentEmail, password },
+  });
+  check(
+    facultyLogin.status === 200 && studentLogin.status === 200,
+    "approved faculty and student can log in",
+  );
+  const wrongRole = await request("/dashboard/admin", {
+    token: studentLogin.data.token,
+  });
+  check(
+    wrongRole.status === 403,
+    "backend rejects student access to admin API",
+  );
+
+  const startAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  while (startAt.getDay() !== 1) startAt.setDate(startAt.getDate() + 1);
+  startAt.setHours(9, 0, 0, 0);
+  const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+  const schedule = await request("/availability", {
+    method: "POST",
+    token: facultyLogin.data.token,
+    body: {
+      startAt,
+      endAt,
+      location: "CT-204",
+      mode: "Face-to-Face",
+    },
+  });
+  check(schedule.status === 201, "faculty creates one availability window");
+  const directory = await request("/availability/faculty", {
+    token: studentLogin.data.token,
+  });
+  check(
+    directory.data.faculty.some(
+      (item) => item._id === facultyLogin.data.user.id,
+    ),
+    "approved faculty appears in the student directory",
+  );
+  const availableSchedules = await request(
+    `/availability/faculty/${facultyLogin.data.user.id}`,
+    { token: studentLogin.data.token },
+  );
+  check(
+    availableSchedules.data.schedules.length === 1 &&
+      new Date(availableSchedules.data.schedules[0].startAt).getTime() ===
+        startAt.getTime() &&
+      new Date(availableSchedules.data.schedules[0].endAt).getTime() ===
+        endAt.getTime(),
+    "availability remains one complete 60-minute window",
+  );
+  const bookingForm = new FormData();
+  bookingForm.append("availabilityId", schedule.data.availability._id);
+  bookingForm.append("estimatedDurationMinutes", "10");
+  bookingForm.append("subject", "QA Consultation");
+  bookingForm.append("reason", "End-to-end workflow verification");
+  bookingForm.append(
+    "documents",
+    new Blob(["image-content"], { type: "image/png" }),
+    "qa-image.png",
+  );
+  bookingForm.append(
+    "documents",
+    new Blob(["pdf-content"], { type: "application/pdf" }),
+    "qa-research.pdf",
+  );
+  bookingForm.append(
+    "documents",
+    new Blob(["document-content"], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }),
+    "qa-assignment.docx",
+  );
+  const booking = await request("/appointments", {
+    method: "POST",
+    token: studentLogin.data.token,
+    body: bookingForm,
+  });
+  check(
+    booking.status === 201 && booking.data.appointment.status === "Pending",
+    "student creates Pending appointment",
+  );
+  const availabilityAfterBooking = await request(
+    `/availability/faculty/${facultyLogin.data.user.id}`,
+    { token: studentLogin.data.token },
+  );
+  check(
+    availabilityAfterBooking.data.schedules[0].hasActiveRequest === true &&
+      availabilityAfterBooking.data.schedules[0].requestStatus === "Pending" &&
+      availabilityAfterBooking.data.schedules[0].appointmentId ===
+        booking.data.appointment._id,
+    "student availability response identifies the existing Pending request",
+  );
+  const blockedDuplicate = await request("/appointments", {
+    method: "POST",
+    token: studentLogin.data.token,
+    body: {
+      availabilityId: schedule.data.availability._id,
+      estimatedDurationMinutes: 10,
+      subject: "Blocked Duplicate",
+      reason: "Duplicate-rule verification",
+    },
+  });
+  check(
+    blockedDuplicate.status === 409 &&
+      blockedDuplicate.data.message ===
+        "You already have an active consultation request for this faculty schedule.",
+    "backend blocks the same Student from duplicating an active request",
+  );
+  const facultyNotifications = await request("/notifications", {
+    token: facultyLogin.data.token,
+  });
+  const submittedNotifications = await request("/notifications", {
+    token: studentLogin.data.token,
+  });
+  check(
+    facultyNotifications.data.notifications.some(
+      (item) => item.title === "New Consultation Request",
+    ) &&
+      submittedNotifications.data.notifications.some(
+        (item) => item.title === "Consultation Request Submitted",
+      ),
+    "booking creates recipient-scoped Student and Faculty notifications",
+  );
+  const extraStudentTokens = [];
+  const passwordHash = await bcrypt.hash(password, 12);
+  for (let index = 2; index <= 7; index += 1) {
+    const extraStudent = await User.create({
+      name: `ConsultIO QA Student ${index}`,
+      email: `consultio.qa.student.${stamp}.${index}@student.hau.edu.ph`,
+      studentId: `QA-S-${stamp}-${index}`,
+      program: "Bachelor of Science in Information Technology",
+      password: passwordHash,
+      role: "student",
+      registrationStatus: "Approved",
+      accountStatus: "Active",
+      approvedBy: adminDoc.id,
+      approvedAt: new Date(),
+    });
+    createdUsers.push(extraStudent.id);
+    const login = await request("/auth/login/student", {
+      method: "POST",
+      body: { identifier: extraStudent.email, password },
+    });
+    check(login.status === 200, `additional student ${index} can log in`);
+    extraStudentTokens.push(login.data.token);
+  }
+  for (const [index, token] of extraStudentTokens.entries()) {
+    const additionalBooking = await request("/appointments", {
+      method: "POST",
+      token,
+      body: {
+        availabilityId: schedule.data.availability._id,
+        estimatedDurationMinutes: 10,
+        subject: `Shared Window Request ${index + 2}`,
+        reason: "Capacity workflow verification",
+      },
+    });
+    check(
+      additionalBooking.status === 201,
+      `student ${index + 2} can request the same availability window`,
+    );
+  }
+  const adminAppointments = await request("/admin/appointments", {
+    token: adminToken,
+  });
+  const pendingAdminDashboard = await request("/dashboard/admin", {
+    token: adminToken,
+  });
+  check(
+    adminAppointments.data.appointments.some(
+      (item) => item._id === booking.data.appointment._id,
+    ) && pendingAdminDashboard.data.stats.pendingAppointments >= 1,
+    "admin monitors the same Pending appointment and dashboard count",
+  );
+  const facultyRequests = await request("/appointments/mine", {
+    token: facultyLogin.data.token,
+  });
+  check(
+    facultyRequests.data.appointments.some(
+      (x) =>
+        x._id === booking.data.appointment._id &&
+        x.supportingDocuments.length === 3,
+    ),
+    "faculty sees one student request with three supporting documents",
+  );
+  const capacity = facultyRequests.data.availabilityCapacity.find(
+    (item) => item.availabilityId === schedule.data.availability._id,
+  );
+  check(
+    capacity?.pendingCount === 7 &&
+      capacity.pendingEstimatedMinutes === 70 &&
+      capacity.capacityMinutes === 60,
+    "faculty sees seven requests totaling 70 minutes for a 60-minute window",
+  );
+  const savedDocuments = await SupportingDocument.find({
+    appointment: booking.data.appointment._id,
+  });
+  check(
+    savedDocuments.length === 3,
+    "three supporting documents are stored for one appointment",
+  );
+  const rejectedOriginal = await request(
+    `/appointments/${booking.data.appointment._id}/status`,
+    {
+      method: "PUT",
+      token: facultyLogin.data.token,
+      body: { status: "Rejected", note: "QA retry verification" },
+    },
+  );
+  check(
+    rejectedOriginal.status === 200,
+    "faculty can reject the original request",
+  );
+  const availabilityAfterRejection = await request(
+    `/availability/faculty/${facultyLogin.data.user.id}`,
+    { token: studentLogin.data.token },
+  );
+  check(
+    availabilityAfterRejection.data.schedules[0].hasActiveRequest === false,
+    "Rejected request releases the schedule for the same Student",
+  );
+  const replacementBooking = await request("/appointments", {
+    method: "POST",
+    token: studentLogin.data.token,
+    body: {
+      availabilityId: schedule.data.availability._id,
+      estimatedDurationMinutes: 10,
+      subject: "Replacement QA Consultation",
+      reason: "Retry after Faculty rejection",
+    },
+  });
+  check(
+    replacementBooking.status === 201 &&
+      (await Appointment.findById(booking.data.appointment._id)).status ===
+        "Rejected",
+    "same Student can create a new request while the Rejected record remains",
+  );
+  const cancelledReplacement = await request(
+    `/appointments/${replacementBooking.data.appointment._id}/cancel`,
+    { method: "PUT", token: studentLogin.data.token },
+  );
+  check(
+    cancelledReplacement.status === 200,
+    "student can cancel the replacement request",
+  );
+  const finalBooking = await request("/appointments", {
+    method: "POST",
+    token: studentLogin.data.token,
+    body: {
+      availabilityId: schedule.data.availability._id,
+      estimatedDurationMinutes: 10,
+      subject: "Final QA Consultation",
+      reason: "Retry after Student cancellation",
+    },
+  });
+  check(
+    finalBooking.status === 201 &&
+      (await Appointment.findById(replacementBooking.data.appointment._id))
+        .status === "Cancelled",
+    "same Student can retry while the Cancelled record remains",
+  );
+  const appointmentApproval = await request(
+    `/appointments/${finalBooking.data.appointment._id}/status`,
+    {
+      method: "PUT",
+      token: facultyLogin.data.token,
+      body: { status: "Approved" },
+    },
+  );
+  check(
+    appointmentApproval.status === 200 &&
+      appointmentApproval.data.appointment.status === "Approved",
+    "faculty approves appointment",
+  );
+  const blockedAfterApproval = await request("/appointments", {
+    method: "POST",
+    token: studentLogin.data.token,
+    body: {
+      availabilityId: schedule.data.availability._id,
+      estimatedDurationMinutes: 10,
+      subject: "Blocked Approved Duplicate",
+      reason: "Approved duplicate verification",
+    },
+  });
+  check(
+    blockedAfterApproval.status === 409,
+    "Approved request continues to block same-Student duplicates",
+  );
+  const studentNotifications = await request("/notifications", {
+    token: studentLogin.data.token,
+  });
+  const approvalNotification = studentNotifications.data.notifications.find(
+    (item) => item.title === "Consultation Approved",
+  );
+  check(
+    Boolean(approvalNotification) && studentNotifications.data.unreadCount >= 1,
+    "Student receives an unread Consultation Approved notification",
+  );
+  const markedRead = await request(
+    `/notifications/${approvalNotification._id}/read`,
+    { method: "PUT", token: studentLogin.data.token },
+  );
+  const refreshedNotifications = await request("/notifications", {
+    token: studentLogin.data.token,
+  });
+  check(
+    markedRead.data.notification.isRead === true &&
+      Boolean(markedRead.data.notification.readAt) &&
+      refreshedNotifications.data.notifications.find(
+        (item) => item._id === approvalNotification._id,
+      )?.isRead === true &&
+      refreshedNotifications.data.unreadCount ===
+        studentNotifications.data.unreadCount - 1,
+    "Mark as Read persists in MongoDB and decreases unread count",
+  );
+  const studentAppointments = await request("/appointments/mine", {
+    token: studentLogin.data.token,
+  });
+  check(
+    studentAppointments.data.appointments.some(
+      (x) =>
+        x._id === finalBooking.data.appointment._id && x.status === "Approved",
+    ),
+    "student immediately sees Approved appointment",
+  );
+  const adminDashboard = await request("/dashboard/admin", {
+    token: adminToken,
+  });
+  check(
+    adminDashboard.status === 200 &&
+      adminDashboard.data.stats.totalAppointments >= 1 &&
+      adminDashboard.data.stats.approvedAppointments >= 1,
+    "admin dashboard uses live Approved appointment totals",
+  );
+  const logs = await request("/admin/logs", { token: adminToken });
+  check(
+    logs.data.logs.some((x) => x.action === "registration_approved"),
+    "audit log contains approval action",
+  );
+
+  const changed = await request("/admin/settings/password", {
+    method: "PUT",
+    token: adminToken,
+    body: {
+      currentPassword: process.env.ADMIN_PASSWORD,
+      newPassword: "Temporary-QA-Password-2026!",
+    },
+  });
+  check(changed.status === 200, "admin password change validates and saves");
+  await User.updateOne(
+    { _id: adminDoc.id },
+    {
+      $set: { password: originalAdminHash },
+      ...(originalChangedAt
+        ? {
+            $set: {
+              password: originalAdminHash,
+              passwordChangedAt: originalChangedAt,
+            },
+          }
+        : { $unset: { passwordChangedAt: 1 } }),
+    },
+  );
+
+  await stopHttp();
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  await startHttp();
+  for (const test of [
+    { role: "faculty", email: facultyEmail },
+    { role: "student", email: studentEmail },
+  ]) {
+    const repeat = await request(`/auth/login/${test.role}`, {
+      method: "POST",
+      body: { identifier: test.email, password },
+    });
+    check(
+      repeat.status === 200,
+      `${test.role} remains Approved after server restart`,
+    );
+  }
+  const forbiddenReset = await request(
+    `/admin/users/${createdUsers[0]}/reset-password`,
+    {
+      method: "PUT",
+      token: studentLogin.data.token,
+      body: {
+        newPassword: "Reset-QA-Password-2026!",
+        confirmPassword: "Reset-QA-Password-2026!",
+      },
+    },
+  );
+  check(
+    forbiddenReset.status === 403,
+    "student cannot access the administrator password reset endpoint",
+  );
+  const resetPassword = "Reset-QA-Password-2026!";
+  for (const [index, test] of [
+    { role: "faculty", email: facultyEmail },
+    { role: "student", email: studentEmail },
+  ].entries()) {
+    const reset = await request(
+      `/admin/users/${createdUsers[index]}/reset-password`,
+      {
+        method: "PUT",
+        token: adminToken,
+        body: {
+          newPassword: resetPassword,
+          confirmPassword: resetPassword,
+        },
+      },
+    );
+    check(reset.status === 200, `administrator resets ${test.role} password`);
+    const oldLogin = await request(`/auth/login/${test.role}`, {
+      method: "POST",
+      body: { identifier: test.email, password },
+    });
+    const newLogin = await request(`/auth/login/${test.role}`, {
+      method: "POST",
+      body: { identifier: test.email, password: resetPassword },
+    });
+    const storedUser = await User.findById(createdUsers[index]);
+    check(
+      oldLogin.status === 401 &&
+        newLogin.status === 200 &&
+        storedUser.registrationStatus === "Approved" &&
+        storedUser.accountStatus === "Active" &&
+        Boolean(storedUser.passwordChangedAt),
+      `${test.role} uses the new password and remains Approved/Active`,
+    );
+  }
+  check(
+    (await AuditLog.countDocuments({
+      action: "admin_password_reset",
+      targetId: { $in: createdUsers },
+    })) === 2,
+    "administrator password resets are recorded in audit logs",
+  );
+  console.log("E2E_RESULT=PASS");
+} finally {
+  if (server?.listening) await stopHttp();
+  if (createdUsers.length) {
+    const appointments = await Appointment.find({
+      $or: [
+        { student: { $in: createdUsers } },
+        { faculty: { $in: createdUsers } },
+      ],
+    }).select("_id");
+    const appointmentIds = appointments.map((x) => x.id);
+    await Promise.all([
+      SupportingDocument.deleteMany({ appointment: { $in: appointmentIds } }),
+      Appointment.deleteMany({ _id: { $in: appointmentIds } }),
+      Availability.deleteMany({ faculty: { $in: createdUsers } }),
+      Notification.deleteMany({
+        $or: [
+          { recipient: { $in: createdUsers } },
+          { relatedEntityId: { $in: [...createdUsers, ...appointmentIds] } },
+        ],
+      }),
+      AuditLog.deleteMany({
+        $or: [
+          { actor: { $in: createdUsers } },
+          { targetId: { $in: [...createdUsers, ...appointmentIds] } },
+        ],
+      }),
+      User.deleteMany({ _id: { $in: createdUsers } }),
+    ]);
+  }
+  await mongoose.disconnect();
+}

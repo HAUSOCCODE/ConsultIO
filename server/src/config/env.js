@@ -1,0 +1,26 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export const env = {
+  port: Number(process.env.PORT) || 5000,
+  mongoUri: process.env.MONGODB_URI,
+  jwtSecret: process.env.JWT_SECRET,
+  clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+  studentDomain: (
+    process.env.STUDENT_EMAIL_DOMAIN || "student.hau.edu.ph"
+  ).toLowerCase(),
+  facultyDomain: (
+    process.env.FACULTY_EMAIL_DOMAIN || "faculty.hau.edu.ph"
+  ).toLowerCase(),
+  adminUsername: (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase(),
+  adminPassword: process.env.ADMIN_PASSWORD,
+};
+
+export function validateEnv() {
+  const missing = ["mongoUri", "jwtSecret", "adminPassword"].filter(
+    (key) => !env[key],
+  );
+  if (missing.length)
+    throw new Error(`Missing server environment values: ${missing.join(", ")}`);
+}
