@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  ExternalLink,
   FileText,
   LockKeyhole,
   Users,
@@ -43,6 +44,24 @@ const features = [
     "Consultation Records",
     "Maintain accessible academic support records.",
   ],
+];
+const socialPages = [
+  {
+    title: "HAU School of Computing Student Council",
+    description:
+      "Official student council page of the HAU School of Computing.",
+    image: "/images/social/hausoccouncillogo.jpg",
+    alt: "HAU School of Computing Student Council logo",
+    href: "https://www.facebook.com/haucscsoc",
+  },
+  {
+    title: "HAU School of Computing",
+    description:
+      "Official Facebook page of the Holy Angel University School of Computing.",
+    image: "/images/social/schoolofcomputinglogo.png",
+    alt: "HAU School of Computing logo",
+    href: "https://www.facebook.com/haucictofficial",
+  },
 ];
 export default function LandingPage() {
   const [stats, setStats] = useState(null);
@@ -183,6 +202,62 @@ export default function LandingPage() {
               appointment monitoring, notifications, consultation records, and
               follow-up activities into one secure workspace.
             </p>
+          </div>
+        </section>
+        <section className="bg-white py-16 sm:py-20" aria-labelledby="social-heading">
+          <div className="container-page">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-sm font-bold uppercase tracking-widest text-gold-600">
+                Official school pages
+              </p>
+              <h2
+                id="social-heading"
+                className="mt-3 break-words font-display text-3xl font-bold text-maroon-900 sm:text-4xl"
+              >
+                Connect with the School of Computing
+              </h2>
+              <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
+                Stay connected with the official School of Computing and
+                Student Council pages.
+              </p>
+            </div>
+
+            <div className="mx-auto mt-10 grid w-full max-w-5xl grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
+              {socialPages.map((page) => (
+                <article
+                  key={page.href}
+                  className="flex min-w-0 max-w-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card sm:p-6"
+                >
+                  <div className="flex min-w-0 flex-col gap-5 min-[380px]:flex-row min-[380px]:items-center">
+                    <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5">
+                      <img
+                        src={page.image}
+                        alt={page.alt}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="break-words text-lg font-bold leading-6 text-maroon-900">
+                        {page.title}
+                      </h3>
+                      <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+                        {page.description}
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={page.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary mt-6 w-full gap-2 sm:w-fit"
+                    aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
+                  >
+                    Visit Facebook Page
+                    <ExternalLink size={17} aria-hidden="true" />
+                  </a>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       </main>
