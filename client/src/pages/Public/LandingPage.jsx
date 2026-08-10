@@ -222,13 +222,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mx-auto mt-10 grid w-full max-w-5xl grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
+            <div className="mx-auto mt-10 grid w-full max-w-5xl grid-cols-1 items-stretch gap-5 md:grid-cols-2 md:gap-6">
               {socialPages.map((page) => (
                 <article
                   key={page.href}
-                  className="flex min-w-0 max-w-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card sm:p-6"
+                  className="flex h-full min-w-0 max-w-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card sm:p-6"
                 >
-                  <div className="flex min-w-0 flex-col gap-5 min-[380px]:flex-row min-[380px]:items-center">
+                  <div className="flex min-w-0 flex-1 flex-col gap-5 min-[380px]:flex-row min-[380px]:items-start">
                     <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5">
                       <img
                         src={page.image}
@@ -237,7 +237,7 @@ export default function LandingPage() {
                       />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="break-words text-lg font-bold leading-6 text-maroon-900">
+                      <h3 className="break-words text-lg font-bold leading-6 text-maroon-900 md:min-h-[4.5rem] lg:min-h-12">
                         {page.title}
                       </h3>
                       <p className="mt-2 break-words text-sm leading-6 text-slate-600">
@@ -245,16 +245,18 @@ export default function LandingPage() {
                       </p>
                     </div>
                   </div>
-                  <a
-                    href={page.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-secondary mt-6 w-full gap-2 sm:w-fit"
-                    aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
-                  >
-                    Visit Facebook Page
-                    <ExternalLink size={17} aria-hidden="true" />
-                  </a>
+                  <div className="mt-auto pt-6">
+                    <a
+                      href={page.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary w-full gap-2 sm:w-fit"
+                      aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
+                    >
+                      Visit Facebook Page
+                      <ExternalLink size={17} aria-hidden="true" />
+                    </a>
+                  </div>
                 </article>
               ))}
             </div>
