@@ -109,7 +109,7 @@ export default function AppointmentsPage({ filter }) {
       toast.error(e.message || "Unable to cancel the appointment.");
     }
   };
-  const document = async (appointment) => {
+  const openSupportingDocument = async (appointment) => {
     try {
       const data = await api(`/appointments/${appointment._id}/document`);
       const link = window.document.createElement("a");
@@ -122,6 +122,10 @@ export default function AppointmentsPage({ filter }) {
   };
   const requestReschedule = async () => {
     const reason = requestReason.trim();
+    if (!reason) {
+      setRequestError("Please enter a reason for rescheduling.");
+      return;
+    }
     if (reason.length < 5) {
       setRequestError("Please enter a meaningful reason of at least 5 characters.");
       return;
@@ -139,13 +143,16 @@ export default function AppointmentsPage({ filter }) {
           body: JSON.stringify({ reason }),
         },
       );
-      toast.success(data.message);
+      toast.success("Reschedule request submitted successfully.");
       setRequestTarget(null);
       setRequestReason("");
       setRequestError("");
       load();
     } catch (requestError) {
-      toast.error(requestError.message || "Unable to submit the reschedule request.");
+      toast.error(
+        requestError.message ||
+          "Unable to submit the reschedule request. Please try again.",
+      );
     } finally {
       setRequestSubmitting(false);
     }
@@ -485,9 +492,24 @@ export default function AppointmentsPage({ filter }) {
               onMouseDown={(event) => event.stopPropagation()}
               className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
             >
-              <h2 id="request-reschedule-title" className="text-xl font-bold text-maroon-900">
-                Request Consultation Reschedule
-              </h2>
+              <div className="flex items-start justify-between gap-4">
+                <h2 id="request-reschedule-title" className="text-xl font-bold text-maroon-900">
+                  Request Reschedule
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Close reschedule request"
+                  disabled={requestSubmitting}
+                  onClick={() => {
+                    setRequestTarget(null);
+                    setRequestReason("");
+                    setRequestError("");
+                  }}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  &times;
+                </button>
+              </div>
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="font-bold text-slate-800">Current Consultation</h3>
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
@@ -496,6 +518,7 @@ export default function AppointmentsPage({ filter }) {
                   <ModalDetail label="Time" value={`${formatClock(requestTarget.startAt)} – ${formatClock(requestTarget.endAt)}`} />
                   <ModalDetail label="Mode" value={requestTarget.consultationMode} />
                   <ModalDetail label="Location / Meeting Platform" value={requestTarget.meetingPlatform || requestTarget.location} wide />
+                  <ModalDetail label="Subject / Topic" value={requestTarget.subject} wide />
                 </dl>
               </div>
               <label className="mt-5 block text-sm font-semibold text-slate-700">
@@ -506,6 +529,7 @@ export default function AppointmentsPage({ filter }) {
                   maxLength={500}
                   rows={5}
                   value={requestReason}
+                  aria-invalid={Boolean(requestError)}
                   onChange={(event) => {
                     setRequestReason(event.target.value);
                     setRequestError("");
@@ -523,8 +547,8 @@ export default function AppointmentsPage({ filter }) {
                 <button type="button" disabled={requestSubmitting} onClick={() => { setRequestTarget(null); setRequestReason(""); setRequestError(""); }} className="btn-secondary">
                   Cancel
                 </button>
-                <button type="button" disabled={requestSubmitting || requestReason.trim().length < 5} onClick={requestReschedule} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
-                  {requestSubmitting ? "Submitting..." : "Submit Reschedule Request"}
+                <button type="button" disabled={requestSubmitting} onClick={requestReschedule} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                  {requestSubmitting ? "Submitting..." : "Submit Request"}
                 </button>
               </div>
             </section>
@@ -892,7 +916,7 @@ export default function AppointmentsPage({ filter }) {
                     user.role !== "student" && (
                       <button
                         type="button"
-                        onClick={() => document(x)}
+                        onClick={() => openSupportingDocument(x)}
                         className="rounded-lg border px-4 py-2 text-sm font-bold text-maroon-800"
                       >
                         View Document
