@@ -7,6 +7,7 @@ import {
   Clock3,
   ExternalLink,
   FileText,
+  Instagram,
   LockKeyhole,
   Users,
 } from "lucide-react";
@@ -53,6 +54,7 @@ const socialPages = [
     image: "/images/social/hausoccouncillogo.jpg",
     alt: "HAU School of Computing Student Council logo",
     href: "https://www.facebook.com/haucscsoc",
+    instagramHref: "https://www.instagram.com/haucscsoc/",
   },
   {
     title: "HAU School of Computing",
@@ -245,17 +247,30 @@ export default function LandingPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-auto pt-6">
+                  <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap">
                     <a
                       href={page.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-secondary w-full gap-2 sm:w-fit"
+                      className="btn-secondary w-full gap-2 whitespace-normal sm:w-auto"
                       aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
                     >
                       Visit Facebook Page
                       <ExternalLink size={17} aria-hidden="true" />
                     </a>
+                    {page.instagramHref && (
+                      <a
+                        href={page.instagramHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-secondary w-full gap-2 whitespace-normal sm:w-auto"
+                        aria-label={`Visit ${page.title} on Instagram (opens in a new tab)`}
+                      >
+                        <Instagram size={17} aria-hidden="true" />
+                        Visit Instagram Page
+                        <ExternalLink size={17} aria-hidden="true" />
+                      </a>
+                    )}
                   </div>
                 </article>
               ))}
