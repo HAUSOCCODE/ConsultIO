@@ -53,7 +53,7 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
   if (!labels[role] || (role === "admin" && mode === "register"))
     return <Navigate to="/get-started" replace />;
   const domain =
-    role === "student" ? "student.hau.edu.ph" : "faculty.hau.edu.ph";
+    role === "student" ? "student.hau.edu.ph" : "hau.edu.ph";
   const submit = async (e) => {
     e.preventDefault();
     setError("");

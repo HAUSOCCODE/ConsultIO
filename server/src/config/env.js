@@ -13,10 +13,14 @@ export const env = {
       : "http://localhost:5173"),
   studentDomain: (
     process.env.STUDENT_EMAIL_DOMAIN || "student.hau.edu.ph"
-  ).toLowerCase(),
+  )
+    .trim()
+    .toLowerCase(),
   facultyDomain: (
-    process.env.FACULTY_EMAIL_DOMAIN || "faculty.hau.edu.ph"
-  ).toLowerCase(),
+    process.env.FACULTY_EMAIL_DOMAIN || "hau.edu.ph"
+  )
+    .trim()
+    .toLowerCase(),
   adminUsername: (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD,
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,

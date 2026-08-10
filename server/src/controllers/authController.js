@@ -12,8 +12,10 @@ import {
 const normalize = (value = "") => value.trim().toLowerCase();
 const validEmail = (email, domain) => {
   const normalized = normalize(email);
+  const emailDomain = normalized.slice(normalized.lastIndexOf("@") + 1);
   return (
-    /^[^\s@]+@[^\s@]+$/.test(normalized) && normalized.endsWith(`@${domain}`)
+    /^[^\s@]+@[^\s@]+$/.test(normalized) &&
+    emailDomain === normalize(domain)
   );
 };
 const validPassword = (password) =>

@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 
 const base = "http://127.0.0.1:5055/api";
 const stamp = Date.now();
-const facultyEmail = `consultio.qa.faculty.${stamp}@faculty.hau.edu.ph`;
+const facultyEmail = `consultio.qa.faculty.${stamp}@hau.edu.ph`;
 const studentEmail = `consultio.qa.student.${stamp}@student.hau.edu.ph`;
 const password = "ConsultIO-QA-2026!";
 const createdUsers = [];
@@ -77,6 +77,29 @@ try {
       invalidAdminPassword.data.message.includes("Spaces are not allowed"),
     "administrator login rejects passwords that violate complexity rules",
   );
+
+  const previousFacultyDomain = `faculty.${facultyEmail.split("@")[1]}`;
+  for (const invalidFacultyEmail of [
+    `consultio.qa.invalid.${stamp}@${previousFacultyDomain}`,
+    `consultio.qa.invalid.${stamp}@student.hau.edu.ph`,
+    `consultio.qa.invalid.${stamp}@gmail.com`,
+  ]) {
+    const invalidFacultyDomain = await request("/auth/register/faculty", {
+      method: "POST",
+      body: {
+        name: "ConsultIO Invalid Faculty",
+        email: invalidFacultyEmail,
+        employeeId: `QA-INVALID-${stamp}`,
+        department: "School of Computing",
+        password,
+      },
+    });
+    check(
+      invalidFacultyDomain.status === 400 &&
+        invalidFacultyDomain.data.message.includes("@hau.edu.ph"),
+      `faculty registration rejects non-official domain: ${invalidFacultyEmail.split("@")[1]}`,
+    );
+  }
 
   for (const test of [
     {
@@ -643,7 +666,7 @@ try {
   const outsiderPassword = await bcrypt.hash(password, 12);
   const outsiderFaculty = await User.create({
     name: "ConsultIO QA Outside Faculty",
-    email: `consultio.qa.outside.${stamp}@faculty.hau.edu.ph`,
+    email: `consultio.qa.outside.${stamp}@hau.edu.ph`,
     employeeId: `QA-OUT-${stamp}`,
     password: outsiderPassword,
     role: "faculty",
