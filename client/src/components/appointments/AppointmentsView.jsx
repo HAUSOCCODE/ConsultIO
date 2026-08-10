@@ -7,6 +7,10 @@ import Pagination from "../Pagination";
 import AppointmentRequestDetailsModal from "./AppointmentRequestDetailsModal";
 import StudentAppointmentDetailsModal from "./StudentAppointmentDetailsModal";
 import FacultyAppointmentDetailsModal from "./FacultyAppointmentDetailsModal";
+import {
+  getAppointmentDisplayStatus,
+  isAwaitingFacultyUpdate,
+} from "../../utils/appointmentStatus";
 const HISTORY_ITEMS_PER_PAGE = 6;
 export default function AppointmentsPage({ filter }) {
   const { user } = useAuth();
@@ -195,8 +199,8 @@ export default function AppointmentsPage({ filter }) {
   if (filter === "history") {
     const historical =
       user.role === "student"
-        ? ["Completed", "Approved", "Rejected", "Cancelled"]
-        : ["Completed", "Rejected", "Cancelled"];
+        ? ["Completed", "Rejected", "Cancelled", "No Show"]
+        : ["Completed", "Rejected", "Cancelled", "No Show"];
     shown = items.filter((x) =>
       historyTab === "All"
         ? historical.includes(x.status)
@@ -208,6 +212,7 @@ export default function AppointmentsPage({ filter }) {
     const today = now.toDateString();
     shown = items.filter((item) => {
       const start = new Date(item.startAt);
+      const end = new Date(item.endAt);
       if (appointmentTab === "Today")
         return (
           ["Approved", "Rescheduled"].includes(item.status) &&
@@ -216,6 +221,10 @@ export default function AppointmentsPage({ filter }) {
       if (appointmentTab === "Upcoming")
         return (
           ["Approved", "Rescheduled"].includes(item.status) && start >= now
+        );
+      if (appointmentTab === "Awaiting Update")
+        return (
+          ["Approved", "Rescheduled"].includes(item.status) && end < now
         );
       return item.status === appointmentTab;
     });
@@ -245,7 +254,7 @@ export default function AppointmentsPage({ filter }) {
       )}
       {user.role === "faculty" && !filter && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {["Today", "Upcoming", "Completed", "Cancelled"].map((name) => (
+          {["Today", "Upcoming", "Awaiting Update", "Completed", "No Show", "Cancelled"].map((name) => (
             <button
               key={name}
               type="button"
@@ -259,7 +268,7 @@ export default function AppointmentsPage({ filter }) {
       )}
       {user.role === "student" && filter === "history" && (
         <div className="flex flex-wrap gap-2">
-          {["All", "Completed", "Approved", "Rejected", "Cancelled"].map(
+          {["All", "Completed", "No Show", "Rejected", "Cancelled"].map(
             (name) => (
               <button
                 key={name}
@@ -617,7 +626,13 @@ export default function AppointmentsPage({ filter }) {
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="font-bold">{x.subject}</h2>
-                    <StatusBadge status={x.status} />
+                    <StatusBadge
+                      status={
+                        user.role === "student"
+                          ? getAppointmentDisplayStatus(x)
+                          : x.status
+                      }
+                    />
                   </div>
                   <p className="mt-2 text-sm text-slate-600">
                     {user.role === "student"
@@ -678,6 +693,11 @@ export default function AppointmentsPage({ filter }) {
                       Your faculty member released the previous slot. Choose a new active schedule to continue this consultation.
                     </p>
                   )}
+                  {user.role === "student" && isAwaitingFacultyUpdate(x) && (
+                    <p className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+                      The scheduled consultation time has passed. Waiting for your faculty member to update the consultation status.
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -717,12 +737,32 @@ export default function AppointmentsPage({ filter }) {
                   {user.role === "faculty" &&
                     !x.rescheduleRequested &&
                     ["Approved", "Rescheduled"].includes(x.status) && (
-                      <button
-                        onClick={() => update(x._id, "Completed")}
-                        className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white"
-                      >
-                        Complete
-                      </button>
+                      <>
+                        <button
+                          onClick={() => update(x._id, "Completed")}
+                          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white"
+                        >
+                          Complete
+                        </button>
+                        {new Date(x.endAt) < new Date() && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => update(x._id, "No Show")}
+                              className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700"
+                            >
+                              Mark No Show
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => beginReschedule(x)}
+                              className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                            >
+                              Reschedule
+                            </button>
+                          </>
+                        )}
+                      </>
                     )}
                   {user.role === "student" &&
                     x.status === "Needs Reschedule" && (
@@ -918,7 +958,13 @@ function ConsultationHistoryTable({
                     {duration(appointment)}
                   </td>
                   <td className="h-14 px-4 py-0">
-                    <StatusBadge status={appointment.status} />
+                    <StatusBadge
+                      status={
+                        role === "student"
+                          ? getAppointmentDisplayStatus(appointment)
+                          : appointment.status
+                      }
+                    />
                   </td>
                   <td className="h-14 px-4 py-0">
                     <button
@@ -965,7 +1011,13 @@ function ConsultationHistoryTable({
                       `${personLabel} not provided`}
                   </p>
                 </div>
-                <StatusBadge status={appointment.status} />
+                <StatusBadge
+                  status={
+                    role === "student"
+                      ? getAppointmentDisplayStatus(appointment)
+                      : appointment.status
+                  }
+                />
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>

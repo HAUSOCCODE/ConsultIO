@@ -298,7 +298,11 @@ router.get(
 );
 router.put("/:id/status", authorize("faculty"), async (req, res) => {
   const status = req.body.status;
-  if (!["Approved", "Rejected", "Completed", "Rescheduled"].includes(status))
+  if (
+    !["Approved", "Rejected", "Completed", "No Show", "Rescheduled"].includes(
+      status,
+    )
+  )
     return res.status(400).json({ message: "Invalid appointment status." });
   const appointment = await Appointment.findOne({
     _id: req.params.id,
@@ -306,10 +310,18 @@ router.put("/:id/status", authorize("faculty"), async (req, res) => {
   });
   if (!appointment)
     return res.status(404).json({ message: "Appointment not found." });
-  if (["Rejected", "Completed"].includes(appointment.status))
+  if (["Rejected", "Completed", "No Show"].includes(appointment.status))
     return res
       .status(409)
       .json({ message: "This appointment can no longer be updated." });
+  if (
+    status === "No Show" &&
+    (!["Approved", "Rescheduled"].includes(appointment.status) ||
+      appointment.endAt >= new Date())
+  )
+    return res.status(400).json({
+      message: "Only a past approved consultation can be marked No Show.",
+    });
   if (status === "Rescheduled") {
     const slot = await Availability.findOne({
       _id: req.body.availabilityId,
@@ -348,6 +360,7 @@ router.put("/:id/status", authorize("faculty"), async (req, res) => {
     Rejected: "Consultation Request Rejected",
     Rescheduled: "Consultation Rescheduled",
     Completed: "Consultation Completed",
+    "No Show": "Consultation Marked No Show",
   };
   await Promise.all([
     logActivity(

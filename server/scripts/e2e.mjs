@@ -866,6 +866,36 @@ try {
     ),
     "rescheduled student appears only on the newly selected schedule",
   );
+  const pastEndAt = new Date(Date.now() - 60 * 60 * 1000);
+  const pastStartAt = new Date(pastEndAt.getTime() - 60 * 60 * 1000);
+  const unresolvedPastAppointment = await Appointment.create({
+    student: createdUsers[3],
+    faculty: facultyLogin.data.user.id,
+    availability: schedule.data.availability._id,
+    startAt: pastStartAt,
+    endAt: pastEndAt,
+    estimatedDurationMinutes: 10,
+    subject: "Past Consultation Outcome Check",
+    yearLevel: "4th Year",
+    reason: "Verify Faculty can record a missed past consultation.",
+    consultationMode: "Face-to-Face",
+    location: "CT-204",
+    status: "Approved",
+  });
+  const markNoShow = await request(
+    `/appointments/${unresolvedPastAppointment.id}/status`,
+    {
+      method: "PUT",
+      token: facultyLogin.data.token,
+      body: { status: "No Show" },
+    },
+  );
+  check(
+    markNoShow.status === 200 &&
+      (await Appointment.findById(unresolvedPastAppointment.id)).status ===
+        "No Show",
+    "Faculty can resolve a past Approved consultation as No Show",
+  );
 
   const changed = await request("/admin/settings/password", {
     method: "PUT",

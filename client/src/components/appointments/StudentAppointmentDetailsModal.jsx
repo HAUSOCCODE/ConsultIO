@@ -4,6 +4,10 @@ import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
 import OnlineMeetingDetails from "./OnlineMeetingDetails";
+import {
+  getAppointmentDisplayStatus,
+  isAwaitingFacultyUpdate,
+} from "../../utils/appointmentStatus";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -17,6 +21,7 @@ export default function StudentAppointmentDetailsModal({
   appointment,
   onClose,
 }) {
+  const displayStatus = getAppointmentDisplayStatus(appointment);
   useEffect(() => {
     const previous = document.body.style.overflow;
     const escape = (event) => event.key === "Escape" && onClose();
@@ -52,7 +57,7 @@ export default function StudentAppointmentDetailsModal({
               {appointment.subject || "Consultation"}
             </p>
             <div className="mt-2">
-              <StatusBadge status={appointment.status} />
+              <StatusBadge status={displayStatus} />
             </div>
           </div>
           <button
@@ -87,7 +92,7 @@ export default function StudentAppointmentDetailsModal({
                 value={appointment.reason}
                 wide
               />
-              <Detail label="Status" value={appointment.status} />
+              <Detail label="Status" value={displayStatus} />
               <Detail
                 label="Date Submitted"
                 value={safeDate(appointment.createdAt)}
@@ -129,6 +134,12 @@ export default function StudentAppointmentDetailsModal({
               <Detail label="Location" value={appointment.location} />
             )}
           </Section>
+
+          {isAwaitingFacultyUpdate(appointment) && (
+            <p className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
+              The consultation schedule has ended and is awaiting an update from your faculty member.
+            </p>
+          )}
 
           <OnlineMeetingDetails
             appointment={appointment}

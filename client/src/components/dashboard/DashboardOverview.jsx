@@ -4,6 +4,7 @@ import { CalendarCheck, CheckCircle2, Clock3, Users } from "lucide-react";
 import { api } from "../../api/apiClient";
 import { EmptyState, Loading, StatusBadge } from "../UI";
 import { useAuth } from "../../context/AuthContext";
+import { getAppointmentDisplayStatus } from "../../utils/appointmentStatus";
 const titles = {
   totalStudents: "Total Students",
   totalFaculty: "Total Faculty",
@@ -136,7 +137,13 @@ export default function DashboardOverview({
                     {item.email || item.faculty?.name || item.student?.email}
                   </p>
                 </div>
-                <StatusBadge status={item.status || "Pending"} />
+                <StatusBadge
+                  status={
+                    user.role === "student"
+                      ? getAppointmentDisplayStatus(item)
+                      : item.status || "Pending"
+                  }
+                />
               </div>
             ))}
           </div>
