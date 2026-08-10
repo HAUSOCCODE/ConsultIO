@@ -1,6 +1,8 @@
 import Availability from "../models/Availability.js";
 import Appointment from "../models/Appointment.js";
 import User from "../models/User.js";
+import mongoose from "mongoose";
+import { logActivity, notify } from "../services/activityService.js";
 
 const validateSchedule = ({ startAt, endAt }) => {
   if (!Number.isFinite(startAt.getTime()) || !Number.isFinite(endAt.getTime()))
@@ -124,6 +126,76 @@ export const getMyAvailability = async (req, res) =>
       .select("+meetingLink")
       .sort({ startAt: 1 }),
   });
+
+export const getAvailabilityDetails = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({ message: "Invalid availability ID." });
+  const schedule = await Availability.findOne({
+    _id: req.params.id,
+    faculty: req.user.id,
+  }).select("+meetingLink");
+  if (!schedule)
+    return res.status(404).json({ message: "Availability not found." });
+  const approvedStudents = await Appointment.find({
+    availability: schedule.id,
+    faculty: req.user.id,
+    status: { $in: ["Approved", "Rescheduled"] },
+  })
+    .populate("student", "name email studentId program yearLevel")
+    .populate("supportingDocuments", "originalName mimeType size createdAt")
+    .sort({ startAt: 1, createdAt: 1 });
+  res.json({ schedule, approvedStudents });
+};
+
+export const requestFacultyReschedule = async (req, res) => {
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !mongoose.isValidObjectId(req.params.appointmentId)
+  )
+    return res.status(400).json({ message: "Invalid schedule or appointment ID." });
+  const schedule = await Availability.findOne({
+    _id: req.params.id,
+    faculty: req.user.id,
+  });
+  if (!schedule)
+    return res.status(404).json({ message: "Availability not found." });
+  const appointment = await Appointment.findOne({
+    _id: req.params.appointmentId,
+    availability: schedule.id,
+    faculty: req.user.id,
+  });
+  if (!appointment)
+    return res.status(404).json({ message: "Appointment not found for this schedule." });
+  if (!["Approved", "Rescheduled"].includes(appointment.status))
+    return res.status(400).json({
+      message: "Only an approved or scheduled appointment can be rescheduled.",
+    });
+  appointment.status = "Needs Reschedule";
+  appointment.responseNote = (req.body.note || "").trim();
+  appointment.rescheduleRequested = false;
+  appointment.rescheduleRequestNote = "";
+  await appointment.save();
+  await Promise.all([
+    logActivity(
+      "appointment_reschedule_required",
+      req.user.id,
+      "Appointment",
+      appointment.id,
+      { availabilityId: schedule.id },
+    ),
+    notify(
+      appointment.student,
+      "appointment",
+      "Consultation Reschedule Required",
+      "Your faculty member has requested that your consultation be rescheduled. Please select another available schedule.",
+      appointment.id,
+    ),
+  ]);
+  res.json({
+    message: "The student was removed from this schedule and notified to choose a new schedule.",
+    appointment,
+  });
+};
 
 export const createAvailability = async (req, res) => {
   const startAt = new Date(req.body.startAt);

@@ -5,7 +5,9 @@ import {
   deleteAvailability,
   getAvailableFaculty,
   getFacultyAvailability,
+  getAvailabilityDetails,
   getMyAvailability,
+  requestFacultyReschedule,
   updateAvailability,
 } from "../controllers/availabilityController.js";
 
@@ -18,6 +20,18 @@ router.get(
   getFacultyAvailability,
 );
 router.get("/mine", authenticate, authorize("faculty"), getMyAvailability);
+router.get(
+  "/:id/details",
+  authenticate,
+  authorize("faculty"),
+  getAvailabilityDetails,
+);
+router.put(
+  "/:id/appointments/:appointmentId/request-reschedule",
+  authenticate,
+  authorize("faculty"),
+  requestFacultyReschedule,
+);
 router.post("/", authenticate, authorize("faculty"), createAvailability);
 router.put("/:id", authenticate, authorize("faculty"), updateAvailability);
 router.delete("/:id", authenticate, authorize("faculty"), deleteAvailability);

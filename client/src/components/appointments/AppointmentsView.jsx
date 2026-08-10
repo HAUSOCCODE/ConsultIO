@@ -53,11 +53,36 @@ export default function AppointmentsPage({ filter }) {
   };
   const beginReschedule = async (appointment) => {
     try {
-      const data = await api(`/availability/faculty/${user.id}`);
-      setRescheduleSlots(Array.isArray(data?.schedules) ? data.schedules : []);
+      const facultyId =
+        user.role === "student"
+          ? appointment.faculty?._id || appointment.faculty
+          : user.id;
+      const data = await api(`/availability/faculty/${facultyId}`);
+      const currentAvailabilityId =
+        appointment.availability?._id || appointment.availability;
+      setRescheduleSlots(
+        (Array.isArray(data?.schedules) ? data.schedules : []).filter(
+          (slot) => String(slot.availabilityId || slot._id) !== String(currentAvailabilityId),
+        ),
+      );
       setRescheduleTarget(appointment);
     } catch (requestError) {
       setMessage(requestError.message);
+    }
+  };
+  const chooseStudentSchedule = async (appointment, availabilityId) => {
+    try {
+      const data = await api(`/appointments/${appointment._id}/reschedule`, {
+        method: "PUT",
+        body: JSON.stringify({ availabilityId }),
+      });
+      setMessage(data.message);
+      setRescheduleTarget(null);
+      load();
+      return true;
+    } catch (requestError) {
+      setMessage(requestError.message);
+      return false;
     }
   };
   const cancel = async (id) => {
@@ -120,7 +145,7 @@ export default function AppointmentsPage({ filter }) {
   let shown = items;
   if (user.role === "student" && !filter)
     shown = items.filter((x) =>
-      ["Pending", "Approved", "Rescheduled"].includes(x.status),
+      ["Pending", "Approved", "Needs Reschedule", "Rescheduled"].includes(x.status),
     );
   if (filter === "requests")
     shown = items.filter((x) => x.status === "Pending");
@@ -407,11 +432,18 @@ export default function AppointmentsPage({ filter }) {
                     key={slot._id}
                     type="button"
                     onClick={async () => {
-                      await update(rescheduleTarget._id, "Rescheduled", {
-                        availabilityId: slot.availabilityId,
-                        startAt: slot.startAt,
-                      });
-                      setRescheduleTarget(null);
+                      if (user.role === "student")
+                        await chooseStudentSchedule(
+                          rescheduleTarget,
+                          slot.availabilityId,
+                        );
+                      else {
+                        await update(rescheduleTarget._id, "Rescheduled", {
+                          availabilityId: slot.availabilityId,
+                          startAt: slot.startAt,
+                        });
+                        setRescheduleTarget(null);
+                      }
                     }}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm hover:border-maroon-400"
                   >
@@ -505,6 +537,11 @@ export default function AppointmentsPage({ filter }) {
                         : "."}
                     </p>
                   )}
+                  {user.role === "student" && x.status === "Needs Reschedule" && (
+                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                      Your faculty member released the previous slot. Choose a new active schedule to continue this consultation.
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -548,6 +585,16 @@ export default function AppointmentsPage({ filter }) {
                         className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white"
                       >
                         Complete
+                      </button>
+                    )}
+                  {user.role === "student" &&
+                    x.status === "Needs Reschedule" && (
+                      <button
+                        type="button"
+                        onClick={() => beginReschedule(x)}
+                        className="btn-primary"
+                      >
+                        Choose New Schedule
                       </button>
                     )}
                   {user.role === "student" &&

@@ -50,6 +50,7 @@ const appointmentSchema = new mongoose.Schema(
         "Pending",
         "Approved",
         "Rejected",
+        "Needs Reschedule",
         "Rescheduled",
         "Completed",
         "Cancelled",

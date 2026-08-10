@@ -320,6 +320,7 @@ try {
   bookingForm.append("availabilityId", schedule.data.availability._id);
   bookingForm.append("estimatedDurationMinutes", "10");
   bookingForm.append("subject", "QA Consultation");
+  bookingForm.append("yearLevel", "4th Year");
   bookingForm.append("reason", "End-to-end workflow verification");
   bookingForm.append(
     "documents",
@@ -364,6 +365,7 @@ try {
     body: {
       availabilityId: schedule.data.availability._id,
       estimatedDurationMinutes: 10,
+      yearLevel: "4th Year",
       subject: "Blocked Duplicate",
       reason: "Duplicate-rule verification",
     },
@@ -419,6 +421,7 @@ try {
       body: {
         availabilityId: schedule.data.availability._id,
         estimatedDurationMinutes: 10,
+        yearLevel: "4th Year",
         subject: `Shared Window Request ${index + 2}`,
         reason: "Capacity workflow verification",
       },
@@ -493,6 +496,7 @@ try {
     body: {
       availabilityId: schedule.data.availability._id,
       estimatedDurationMinutes: 10,
+      yearLevel: "4th Year",
       subject: "Replacement QA Consultation",
       reason: "Retry after Faculty rejection",
     },
@@ -517,6 +521,7 @@ try {
     body: {
       availabilityId: schedule.data.availability._id,
       estimatedDurationMinutes: 10,
+      yearLevel: "4th Year",
       subject: "Final QA Consultation",
       reason: "Retry after Student cancellation",
     },
@@ -546,6 +551,7 @@ try {
     body: {
       availabilityId: schedule.data.availability._id,
       estimatedDurationMinutes: 10,
+      yearLevel: "4th Year",
       subject: "Blocked Approved Duplicate",
       reason: "Approved duplicate verification",
     },
@@ -600,10 +606,133 @@ try {
       adminDashboard.data.stats.approvedAppointments >= 1,
     "admin dashboard uses live Approved appointment totals",
   );
-  const logs = await request("/admin/logs", { token: adminToken });
   check(
-    logs.data.logs.some((x) => x.action === "registration_approved"),
+    Boolean(await AuditLog.exists({ action: "registration_approved" })),
     "audit log contains approval action",
+  );
+
+  const scheduleDetails = await request(
+    `/availability/${schedule.data.availability._id}/details`,
+    { token: facultyLogin.data.token },
+  );
+  check(
+    scheduleDetails.status === 200 &&
+      scheduleDetails.data.approvedStudents.length === 1 &&
+      scheduleDetails.data.approvedStudents[0]._id ===
+        finalBooking.data.appointment._id,
+    "schedule details include only the exact schedule's approved student",
+  );
+  const studentCannotReadFacultySchedule = await request(
+    `/availability/${schedule.data.availability._id}/details`,
+    { token: studentLogin.data.token },
+  );
+  check(
+    studentCannotReadFacultySchedule.status === 403,
+    "student cannot access Faculty schedule management details",
+  );
+  const outsiderPassword = await bcrypt.hash(password, 12);
+  const outsiderFaculty = await User.create({
+    name: "ConsultIO QA Outside Faculty",
+    email: `consultio.qa.outside.${stamp}@faculty.hau.edu.ph`,
+    employeeId: `QA-OUT-${stamp}`,
+    password: outsiderPassword,
+    role: "faculty",
+    registrationStatus: "Approved",
+    accountStatus: "Active",
+    approvedBy: adminDoc.id,
+    approvedAt: new Date(),
+  });
+  createdUsers.push(outsiderFaculty.id);
+  const outsiderLogin = await request("/auth/login/faculty", {
+    method: "POST",
+    body: { identifier: outsiderFaculty.email, password },
+  });
+  const outsiderAttempt = await request(
+    `/availability/${schedule.data.availability._id}/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    { method: "PUT", token: outsiderLogin.data.token, body: {} },
+  );
+  check(
+    outsiderAttempt.status === 404 &&
+      (await Appointment.findById(finalBooking.data.appointment._id)).status ===
+        "Approved",
+    "Faculty cannot reschedule another Faculty member's appointment",
+  );
+  const facultyReschedule = await request(
+    `/availability/${schedule.data.availability._id}/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    { method: "PUT", token: facultyLogin.data.token, body: {} },
+  );
+  const releasedAppointment = await Appointment.findById(
+    finalBooking.data.appointment._id,
+  );
+  check(
+    facultyReschedule.status === 200 &&
+      releasedAppointment.status === "Needs Reschedule" &&
+      String(releasedAppointment.availability) ===
+        schedule.data.availability._id,
+    "Faculty preserves the appointment and marks it Needs Reschedule",
+  );
+  const releasedDetails = await request(
+    `/availability/${schedule.data.availability._id}/details`,
+    { token: facultyLogin.data.token },
+  );
+  check(
+    releasedDetails.data.approvedStudents.length === 0,
+    "released student no longer occupies the old schedule",
+  );
+  const rescheduleNotification = await Notification.findOne({
+    recipient: studentLogin.data.user.id,
+    relatedEntityId: finalBooking.data.appointment._id,
+    title: "Consultation Reschedule Required",
+  });
+  check(
+    Boolean(rescheduleNotification),
+    "Faculty reschedule request notifies the correct student",
+  );
+  const replacementStartAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
+  const replacementEndAt = new Date(
+    replacementStartAt.getTime() + 60 * 60 * 1000,
+  );
+  const replacementSchedule = await request("/availability", {
+    method: "POST",
+    token: facultyLogin.data.token,
+    body: {
+      startAt: replacementStartAt,
+      endAt: replacementEndAt,
+      location: "CT-205",
+      mode: "Face-to-Face",
+    },
+  });
+  check(
+    replacementSchedule.status === 201,
+    "Faculty publishes a valid replacement schedule",
+  );
+  const studentReschedule = await request(
+    `/appointments/${finalBooking.data.appointment._id}/reschedule`,
+    {
+      method: "PUT",
+      token: studentLogin.data.token,
+      body: { availabilityId: replacementSchedule.data.availability._id },
+    },
+  );
+  const reassignedAppointment = await Appointment.findById(
+    finalBooking.data.appointment._id,
+  );
+  check(
+    studentReschedule.status === 200 &&
+      reassignedAppointment.status === "Rescheduled" &&
+      String(reassignedAppointment.availability) ===
+        replacementSchedule.data.availability._id,
+    "Student reuses the preserved appointment on a new valid schedule",
+  );
+  const replacementDetails = await request(
+    `/availability/${replacementSchedule.data.availability._id}/details`,
+    { token: facultyLogin.data.token },
+  );
+  check(
+    replacementDetails.data.approvedStudents.some(
+      (item) => item._id === finalBooking.data.appointment._id,
+    ),
+    "rescheduled student appears only on the newly selected schedule",
   );
 
   const changed = await request("/admin/settings/password", {

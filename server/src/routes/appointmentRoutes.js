@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
 import Availability from "../models/Availability.js";
 import User from "../models/User.js";
@@ -434,4 +435,77 @@ router.put(
     });
   },
 );
+router.put("/:id/reschedule", authorize("student"), async (req, res) => {
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !mongoose.isValidObjectId(req.body.availabilityId)
+  )
+    return res.status(400).json({ message: "Invalid appointment or availability ID." });
+  const appointment = await Appointment.findOne({
+    _id: req.params.id,
+    student: req.user.id,
+    status: "Needs Reschedule",
+  });
+  if (!appointment)
+    return res.status(409).json({
+      message: "This appointment is not currently awaiting rescheduling.",
+    });
+  const slot = await Availability.findOne({
+    _id: req.body.availabilityId,
+    faculty: appointment.faculty,
+    isActive: true,
+    endAt: { $gt: new Date() },
+  });
+  if (!slot)
+    return res.status(400).json({
+      message: "Select a valid future availability schedule for this faculty member.",
+    });
+  const windowMinutes = Math.round((slot.endAt - slot.startAt) / 60000);
+  const scheduled = await Appointment.find({
+    _id: { $ne: appointment.id },
+    availability: slot.id,
+    status: { $in: ["Approved", "Rescheduled"] },
+  }).select("estimatedDurationMinutes");
+  const occupiedMinutes = scheduled.reduce(
+    (total, item) => total + (item.estimatedDurationMinutes || 0),
+    0,
+  );
+  if (occupiedMinutes + (appointment.estimatedDurationMinutes || 0) > windowMinutes)
+    return res.status(409).json({
+      message: "This schedule no longer has enough time for your consultation.",
+    });
+  appointment.availability = slot.id;
+  appointment.startAt = slot.startAt;
+  appointment.endAt = slot.endAt;
+  appointment.consultationMode = slot.mode || "Online";
+  appointment.location =
+    slot.mode === "Online" ? platformFor(slot) : slot.location;
+  appointment.status = "Rescheduled";
+  appointment.responseNote = "";
+  await appointment.save();
+  await Promise.all([
+    logActivity(
+      "appointment_rescheduled",
+      req.user.id,
+      "Appointment",
+      appointment.id,
+      { availabilityId: slot.id },
+    ),
+    notify(
+      appointment.faculty,
+      "appointment",
+      "Consultation Rescheduled",
+      `${req.user.name} selected a new consultation schedule.`,
+      appointment.id,
+    ),
+    notify(
+      req.user.id,
+      "appointment",
+      "Consultation Rescheduled",
+      "Your new consultation schedule has been saved.",
+      appointment.id,
+    ),
+  ]);
+  res.json({ message: "New consultation schedule selected.", appointment });
+});
 export default router;

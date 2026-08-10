@@ -32,7 +32,9 @@ export default function FacultyAppointmentDetailsModal({
     };
   }, [onClose]);
 
-  const canComplete = ["Approved", "Rescheduled"].includes(appointment.status);
+  const canComplete =
+    typeof onComplete === "function" &&
+    ["Approved", "Rescheduled"].includes(appointment.status);
 
   return createPortal(
     <div

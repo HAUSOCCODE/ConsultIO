@@ -8,6 +8,7 @@ export const StatusBadge = ({ status }) => {
     Inactive: "bg-slate-200 text-slate-700",
     Cancelled: "bg-slate-200 text-slate-700",
     Rescheduled: "bg-purple-100 text-purple-800",
+    "Needs Reschedule": "bg-amber-100 text-amber-800",
   };
   return (
     <span
