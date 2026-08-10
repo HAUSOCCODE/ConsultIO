@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import UserAvatar from "./UserAvatar";
 
-const MAX_SIZE = 5 * 1024 * 1024;
+const MAX_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const allowedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 
@@ -41,7 +41,7 @@ export default function ProfilePictureEditor() {
       return;
     }
     if (file.size > MAX_SIZE) {
-      toast.error("Profile picture must be 5 MB or smaller.");
+      toast.error("Profile picture must be 4 MB or smaller.");
       event.target.value = "";
       return;
     }

@@ -19,12 +19,21 @@ export const env = {
   ).toLowerCase(),
   adminUsername: (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD,
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
 };
 
 export function validateEnv() {
-  const missing = ["mongoUri", "jwtSecret", "adminPassword", "clientUrl"].filter(
-    (key) => !env[key],
-  );
+  const missing = [
+    "mongoUri",
+    "jwtSecret",
+    "adminPassword",
+    "clientUrl",
+    "cloudinaryCloudName",
+    "cloudinaryApiKey",
+    "cloudinaryApiSecret",
+  ].filter((key) => !env[key]);
   if (missing.length)
     throw new Error(`Missing server environment values: ${missing.join(", ")}`);
 }

@@ -21,8 +21,8 @@ const initialForm = (yearLevel = "") => ({
   estimatedDurationMinutes: "10",
   customEstimatedDuration: "",
 });
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
 const allowedExtensions = new Set([
   "jpg",
   "jpeg",
@@ -132,7 +132,7 @@ export default function BookPage() {
     if (combined.length > 5)
       return setFormError("You may upload a maximum of 5 supporting files.");
     if (incoming.some((file) => file.size > MAX_FILE_SIZE))
-      return setFormError("Each supporting file must be 10 MB or smaller.");
+      return setFormError("Each supporting file must be 4 MB or smaller.");
     if (
       incoming.some(
         (file) =>
@@ -141,7 +141,7 @@ export default function BookPage() {
     )
       return setFormError("This file type is not supported.");
     if (combined.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_SIZE)
-      return setFormError("Supporting documents must not exceed 25 MB in total.");
+      return setFormError("Supporting documents must not exceed 4 MB in total.");
     setFormError("");
     setForm({ ...form, documents: combined });
   };
@@ -590,7 +590,7 @@ export default function BookPage() {
                   <label className="block text-sm font-semibold">
                     Supporting Documents{" "}
                     <span className="font-normal text-slate-500">
-                      Optional · Up to 5 files · Maximum 10 MB per file · 25 MB
+                      Optional · Up to 5 files · Maximum 4 MB total
                       total
                     </span>
                     <input
@@ -647,7 +647,7 @@ export default function BookPage() {
                             0,
                           ),
                         )}{" "}
-                        / 25 MB
+                        / 4 MB
                       </p>
                     </div>
                   )}

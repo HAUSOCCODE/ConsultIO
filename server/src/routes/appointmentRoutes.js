@@ -1,5 +1,7 @@
 import { Router } from "express";
 import mongoose from "mongoose";
+import crypto from "node:crypto";
+import path from "node:path";
 import Appointment from "../models/Appointment.js";
 import Availability from "../models/Availability.js";
 import User from "../models/User.js";
@@ -7,6 +9,10 @@ import SupportingDocument from "../models/SupportingDocument.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 import { supportingDocumentUpload } from "../middleware/supportingDocumentUpload.js";
 import { logActivity, notify } from "../services/activityService.js";
+import {
+  destroyAsset,
+  uploadBuffer,
+} from "../services/cloudinaryStorage.js";
 const router = Router();
 router.use(authenticate);
 
@@ -16,6 +22,14 @@ const documentSize = (data = "") => {
 };
 
 const looksLikeUrl = (value = "") => /^https?:\/\//i.test(value);
+const safeOriginalName = (value = "") =>
+  path.basename(value.replaceAll("\\", "/")).slice(0, 255) || "document";
+const cloudinaryResourceType = (mimeType = "") =>
+  mimeType.startsWith("image/")
+    ? "image"
+    : mimeType.startsWith("video/")
+      ? "video"
+      : "raw";
 const platformFor = (availability) =>
   availability?.meetingPlatform || "Meeting platform not provided";
 
@@ -173,17 +187,39 @@ router.post(
       consultationMode: slot.mode || "Online",
       location: slot.mode === "Online" ? platformFor(slot) : slot.location,
     });
+    const uploadedAssets = [];
     try {
       if (req.files?.length) {
+        for (const file of req.files) {
+          const resourceType = cloudinaryResourceType(file.mimetype);
+          const originalName = safeOriginalName(file.originalname);
+          const extension = path.extname(originalName).toLowerCase();
+          const uploaded = await uploadBuffer(file.buffer, {
+            folder: "consultio/consultation-documents",
+            resource_type: resourceType,
+            public_id: `${crypto.randomUUID()}${resourceType === "raw" ? extension : ""}`,
+          });
+          uploadedAssets.push({
+            file,
+            originalName,
+            url: uploaded.secure_url,
+            publicId: uploaded.public_id,
+            resourceType: uploaded.resource_type,
+          });
+        }
         const documents = await SupportingDocument.insertMany(
-          req.files.map((file) => ({
-            appointment: appointment.id,
-            uploadedBy: req.user.id,
-            originalName: file.originalname,
-            mimeType: file.mimetype,
-            size: file.size,
-            data: file.buffer,
-          })),
+          uploadedAssets.map(
+            ({ file, originalName, url, publicId, resourceType }) => ({
+              appointment: appointment.id,
+              uploadedBy: req.user.id,
+              originalName,
+              mimeType: file.mimetype,
+              size: file.size,
+              url,
+              publicId,
+              resourceType,
+            }),
+          ),
         );
         appointment.supportingDocuments = documents.map(
           (document) => document.id,
@@ -192,6 +228,9 @@ router.post(
       }
     } catch (documentError) {
       await Promise.all([
+        ...uploadedAssets.map((asset) =>
+          destroyAsset(asset).catch(() => {}),
+        ),
         SupportingDocument.deleteMany({ appointment: appointment.id }),
         Appointment.deleteOne({ _id: appointment.id }),
       ]);
@@ -254,18 +293,24 @@ router.get(
     const document = await SupportingDocument.findOne({
       _id: req.params.documentId,
       appointment: appointment.id,
-    }).select("+data");
+    }).select("+data +publicId +resourceType");
     if (!document)
       return res
         .status(404)
         .json({ message: "Supporting document not found." });
+    if (!document.url && !document.data)
+      return res
+        .status(404)
+        .json({ message: "Supporting document file is unavailable." });
     res.json({
       supportingDocument: {
         _id: document.id,
         name: document.originalName,
         mimeType: document.mimeType,
         size: document.size,
-        data: `data:${document.mimeType};base64,${document.data.toString("base64")}`,
+        data: document.url
+          ? document.url
+          : `data:${document.mimeType};base64,${document.data.toString("base64")}`,
       },
     });
   },

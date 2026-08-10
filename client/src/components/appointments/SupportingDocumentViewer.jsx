@@ -105,6 +105,10 @@ export default function SupportingDocumentViewer({
       const link = window.document.createElement("a");
       link.href = loaded.data;
       link.download = loaded.name || document.name || "consultation-document";
+      if (/^https?:\/\//i.test(loaded.data)) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
       link.click();
     } catch {
       toast.error("Unable to download this file.");
@@ -308,6 +312,14 @@ function PreviewContent({ kind, document }) {
       </video>
     );
   if (kind === "text") {
+    if (/^https?:\/\//i.test(document.data))
+      return (
+        <iframe
+          title={document.name || "Text document"}
+          src={document.data}
+          className="h-full min-h-[70vh] w-full rounded-lg bg-white"
+        />
+      );
     try {
       const encoded = document.data.split(",")[1] || "";
       const bytes = Uint8Array.from(atob(encoded), (character) =>

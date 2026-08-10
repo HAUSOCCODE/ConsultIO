@@ -33,9 +33,8 @@ const userSchema = new mongoose.Schema(
     specialization: { type: String, trim: true },
     contactNumber: { type: String, trim: true },
     profilePicture: {
-      type: String,
+      type: mongoose.Schema.Types.Mixed,
       select: false,
-      maxlength: 7 * 1024 * 1024,
     },
     registrationStatus: {
       type: String,

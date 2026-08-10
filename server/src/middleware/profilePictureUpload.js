@@ -32,7 +32,7 @@ const hasValidSignature = (file) => {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { files: 1, fileSize: 5 * 1024 * 1024 },
+  limits: { files: 1, fileSize: 4 * 1024 * 1024 },
   fileFilter: (_req, file, callback) => {
     const extension = path.extname(file.originalname).toLowerCase();
     if (
@@ -53,7 +53,7 @@ export const profilePictureUpload = (req, res, next) => {
     if (error?.code === "LIMIT_FILE_SIZE")
       return res
         .status(400)
-        .json({ message: "Profile picture must be 5 MB or smaller." });
+        .json({ message: "Profile picture must be 4 MB or smaller." });
     if (error?.code === "LIMIT_UNEXPECTED_FILE")
       return res
         .status(400)

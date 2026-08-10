@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { env } from "../config/env.js";
 import { STUDENT_PROGRAMS } from "../config/programs.js";
+import {
+  cloudinaryReference,
+  destroyAsset,
+  uploadBuffer,
+} from "../services/cloudinaryStorage.js";
 
 const normalize = (value = "") => value.trim().toLowerCase();
 const validEmail = (email, domain) => {
@@ -33,7 +38,10 @@ const publicUser = (user) => ({
   office: user.office,
   specialization: user.specialization,
   contactNumber: user.contactNumber,
-  profilePicture: user.profilePicture,
+  profilePicture:
+    typeof user.profilePicture === "string"
+      ? user.profilePicture
+      : user.profilePicture?.url,
 });
 const tokenFor = (user) =>
   jwt.sign({ sub: user.id }, env.jwtSecret, { expiresIn: "8h" });
@@ -189,12 +197,32 @@ export async function updateProfile(req, res) {
 export async function updateProfilePicture(req, res) {
   if (!req.file)
     return res.status(400).json({ message: "Please select a valid image file." });
-  const profilePicture = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { profilePicture },
-    { new: true, runValidators: true },
-  ).select("+profilePicture");
+  const currentUser = await User.findById(req.user.id).select(
+    "+profilePicture",
+  );
+  const uploaded = await uploadBuffer(req.file.buffer, {
+    folder: `consultio/profile-pictures/${req.user.role === "student" ? "students" : "faculty"}`,
+    resource_type: "image",
+    transformation: [
+      { width: 1000, height: 1000, crop: "limit", quality: "auto" },
+    ],
+  });
+  const profilePicture = cloudinaryReference(uploaded);
+  let user;
+  try {
+    user = await User.findByIdAndUpdate(
+      req.user.id,
+      { profilePicture },
+      { new: true, runValidators: true },
+    ).select("+profilePicture");
+    if (!user) throw new Error("Authenticated user no longer exists.");
+  } catch (error) {
+    await destroyAsset(profilePicture).catch(() => {});
+    throw error;
+  }
+  const previous = currentUser?.profilePicture;
+  if (previous && typeof previous !== "string")
+    await destroyAsset(previous).catch(() => {});
   res.json({
     message: "Profile picture updated successfully.",
     user: publicUser(user),
@@ -202,11 +230,17 @@ export async function updateProfilePicture(req, res) {
 }
 
 export async function removeProfilePicture(req, res) {
+  const currentUser = await User.findById(req.user.id).select(
+    "+profilePicture",
+  );
   const user = await User.findByIdAndUpdate(
     req.user.id,
     { $unset: { profilePicture: 1 } },
     { new: true },
   ).select("+profilePicture");
+  const previous = currentUser?.profilePicture;
+  if (previous && typeof previous !== "string")
+    await destroyAsset(previous).catch(() => {});
   res.json({
     message: "Profile picture removed successfully.",
     user: publicUser(user),

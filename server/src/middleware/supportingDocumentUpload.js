@@ -42,7 +42,7 @@ const allowedMimeTypes = new Set([
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { files: 5, fileSize: 10 * 1024 * 1024 },
+  limits: { files: 5, fileSize: 4 * 1024 * 1024 },
   fileFilter: (_req, file, callback) => {
     const extension = path.extname(file.originalname).toLowerCase();
     if (
@@ -63,7 +63,7 @@ export const supportingDocumentUpload = (req, res, next) => {
     if (error?.code === "LIMIT_FILE_SIZE")
       return res
         .status(400)
-        .json({ message: "Each supporting file must be 10 MB or smaller." });
+        .json({ message: "Each supporting file must be 4 MB or smaller." });
     if (["LIMIT_FILE_COUNT", "LIMIT_UNEXPECTED_FILE"].includes(error?.code))
       return res
         .status(400)
@@ -73,9 +73,9 @@ export const supportingDocumentUpload = (req, res, next) => {
       (total, file) => total + file.size,
       0,
     );
-    if (totalSize > 25 * 1024 * 1024)
+    if (totalSize > 4 * 1024 * 1024)
       return res.status(400).json({
-        message: "Supporting documents must not exceed 25 MB in total.",
+        message: "Supporting documents must not exceed 4 MB in total.",
       });
     next();
   });
