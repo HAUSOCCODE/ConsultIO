@@ -21,6 +21,7 @@ export default function AppointmentsPage({ filter }) {
   const [appointmentTab, setAppointmentTab] = useState("Upcoming");
   const [historyTab, setHistoryTab] = useState("All");
   const [historyPage, setHistoryPage] = useState(1);
+  const [appointmentsPage, setAppointmentsPage] = useState(1);
   const [details, setDetails] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [rescheduleSlots, setRescheduleSlots] = useState([]);
@@ -232,6 +233,63 @@ export default function AppointmentsPage({ filter }) {
       return item.status === appointmentTab;
     });
   }
+  const renderStudentAppointmentActions = (appointment, mobile = false) => (
+    <div
+      className={`flex min-w-0 flex-wrap gap-2 ${mobile ? "mt-4" : "items-center"}`}
+    >
+      <button
+        type="button"
+        onClick={() => setDetails(appointment)}
+        className={
+          mobile
+            ? "flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-maroon-800"
+            : "text-sm font-bold text-maroon-800 hover:underline"
+        }
+      >
+        View Details
+      </button>
+      {appointment.status === "Needs Reschedule" && (
+        <button
+          type="button"
+          onClick={() => beginReschedule(appointment)}
+          className="rounded-lg bg-maroon-800 px-3 py-2 text-xs font-bold text-white"
+        >
+          Choose New Schedule
+        </button>
+      )}
+      {appointment.status === "Pending" &&
+        new Date(appointment.startAt) > new Date() && (
+          <button
+            type="button"
+            onClick={() => setCancelTarget(appointment)}
+            className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700"
+          >
+            Cancel
+          </button>
+        )}
+      {["Approved", "Rescheduled"].includes(appointment.status) &&
+        new Date(appointment.startAt) > new Date() && (
+          <button
+            type="button"
+            disabled={
+              appointment.rescheduleRequestStatus === "Pending" ||
+              appointment.rescheduleRequested
+            }
+            onClick={() => {
+              setRequestTarget(appointment);
+              setRequestReason("");
+              setRequestError("");
+            }}
+            className="rounded-lg border border-maroon-200 px-3 py-2 text-xs font-bold text-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {appointment.rescheduleRequestStatus === "Pending" ||
+            appointment.rescheduleRequested
+              ? "Reschedule Requested"
+              : "Request Reschedule"}
+          </button>
+        )}
+    </div>
+  );
   return (
     <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
@@ -601,7 +659,18 @@ export default function AppointmentsPage({ filter }) {
           </div>
         </div>
       )}
-      {filter === "history" ? (
+      {user.role === "student" && !filter ? (
+        <ConsultationHistoryTable
+          appointments={shown}
+          currentPage={appointmentsPage}
+          onPageChange={setAppointmentsPage}
+          onView={setDetails}
+          role={user.role}
+          emptyTitle="No current appointments"
+          itemLabel="appointments"
+          renderActions={renderStudentAppointmentActions}
+        />
+      ) : filter === "history" ? (
         <ConsultationHistoryTable
           appointments={shown}
           currentPage={historyPage}
@@ -876,6 +945,8 @@ function ConsultationHistoryTable({
   onView,
   role,
   emptyTitle,
+  itemLabel = "consultation records",
+  renderActions,
 }) {
   const totalPages = Math.max(
     1,
@@ -913,21 +984,25 @@ function ConsultationHistoryTable({
 
   return (
     <>
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-        <table className="w-full table-fixed text-left text-sm">
+      <div
+        className={`hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block ${renderActions ? "overflow-x-auto" : "overflow-hidden"}`}
+      >
+        <table
+          className={`w-full table-fixed text-left text-sm ${renderActions ? "min-w-[960px]" : ""}`}
+        >
           <thead className="bg-maroon-800 text-white">
             <tr>
-              <th className="w-[13%] px-4 py-3 font-semibold">Date</th>
-              <th className="w-[21%] px-4 py-3 font-semibold">
+              <th className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}>Date</th>
+              <th className={`${renderActions ? "w-[18%]" : "w-[21%]"} px-4 py-3 font-semibold`}>
                 Subject / Topic
               </th>
-              <th className="w-[15%] px-4 py-3 font-semibold">{personLabel}</th>
-              <th className="w-[12%] px-4 py-3 font-semibold">Mode</th>
-              <th className="w-[13%] px-4 py-3 font-semibold">
+              <th className={`${renderActions ? "w-[14%]" : "w-[15%]"} px-4 py-3 font-semibold`}>{personLabel}</th>
+              <th className={`${renderActions ? "w-[10%]" : "w-[12%]"} px-4 py-3 font-semibold`}>Mode</th>
+              <th className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}>
                 Estimated Time
               </th>
-              <th className="w-[12%] px-4 py-3 font-semibold">Status</th>
-              <th className="w-[14%] px-4 py-3 font-semibold">Action</th>
+              <th className={`${renderActions ? "w-[14%]" : "w-[12%]"} px-4 py-3 font-semibold`}>Status</th>
+              <th className={`${renderActions ? "w-[20%]" : "w-[14%]"} px-4 py-3 font-semibold`}>Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -941,7 +1016,7 @@ function ConsultationHistoryTable({
               pageAppointments.map((appointment) => (
                 <tr
                   key={appointment._id}
-                  className="h-14 align-middle hover:bg-slate-50"
+                  className={`${renderActions ? "h-20" : "h-14"} align-middle hover:bg-slate-50`}
                 >
                   <td className="h-14 px-4 py-0 text-slate-600">
                     {date(appointment.startAt)}
@@ -976,13 +1051,17 @@ function ConsultationHistoryTable({
                     />
                   </td>
                   <td className="h-14 px-4 py-0">
-                    <button
-                      type="button"
-                      onClick={() => onView(appointment)}
-                      className="text-sm font-bold text-maroon-800 hover:underline"
-                    >
-                      View Details
-                    </button>
+                    {renderActions ? (
+                      renderActions(appointment)
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onView(appointment)}
+                        className="text-sm font-bold text-maroon-800 hover:underline"
+                      >
+                        View Details
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -992,7 +1071,7 @@ function ConsultationHistoryTable({
                 <tr
                   key={`empty-consultation-row-${index}`}
                   aria-hidden="true"
-                  className="h-14 bg-white"
+                  className={`${renderActions ? "h-20" : "h-14"} bg-white`}
                 >
                   <td colSpan={7} />
                 </tr>
@@ -1050,13 +1129,17 @@ function ConsultationHistoryTable({
                   <dd className="mt-1">{duration(appointment)}</dd>
                 </div>
               </dl>
-              <button
-                type="button"
-                onClick={() => onView(appointment)}
-                className="mt-4 w-full rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
-              >
-                View Details
-              </button>
+              {renderActions ? (
+                renderActions(appointment, true)
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onView(appointment)}
+                  className="mt-4 w-full rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                >
+                  View Details
+                </button>
+              )}
             </article>
           ))
         )}
@@ -1068,6 +1151,7 @@ function ConsultationHistoryTable({
             totalItems={appointments.length}
             onPageChange={onPageChange}
             itemsPerPage={HISTORY_ITEMS_PER_PAGE}
+            itemLabel={itemLabel}
           />
         </div>
       )}
