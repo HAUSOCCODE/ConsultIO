@@ -371,7 +371,7 @@ router.put("/:id/cancel", authorize("student"), async (req, res) => {
     {
       _id: req.params.id,
       student: req.user.id,
-      status: { $in: ["Pending", "Approved", "Rescheduled"] },
+      status: "Pending",
       startAt: { $gt: new Date() },
     },
     { status: "Cancelled" },
@@ -409,32 +409,126 @@ router.put(
   "/:id/request-reschedule",
   authorize("student"),
   async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid appointment ID." });
+    const reason = (req.body.reason ?? req.body.note ?? "").trim();
+    if (reason.length < 5)
+      return res.status(400).json({
+        message: "Please provide a meaningful reschedule reason of at least 5 characters.",
+      });
+    if (reason.length > 500)
+      return res.status(400).json({
+        message: "Reschedule reason cannot exceed 500 characters.",
+      });
     const appointment = await Appointment.findOne({
       _id: req.params.id,
       student: req.user.id,
-      status: { $in: ["Approved", "Rescheduled"] },
-      startAt: { $gt: new Date() },
     });
     if (!appointment)
+      return res.status(404).json({ message: "Appointment not found." });
+    if (
+      appointment.rescheduleRequested ||
+      appointment.rescheduleRequestStatus === "Pending"
+    )
+      return res.status(409).json({
+        message: "A reschedule request is already awaiting Faculty review.",
+      });
+    if (
+      !["Approved", "Rescheduled"].includes(appointment.status) ||
+      appointment.startAt <= new Date()
+    )
       return res
-        .status(409)
-        .json({ message: "This appointment cannot be rescheduled." });
+        .status(400)
+        .json({ message: "This appointment is not eligible for rescheduling." });
     appointment.rescheduleRequested = true;
-    appointment.rescheduleRequestNote = (req.body.note || "").trim();
+    appointment.rescheduleRequestNote = reason;
+    appointment.rescheduleRequestStatus = "Pending";
+    appointment.rescheduleRequestedAt = new Date();
+    appointment.rescheduleReviewedAt = undefined;
+    appointment.rescheduleReviewedBy = undefined;
+    appointment.rescheduleDecisionNote = "";
     await appointment.save();
-    await notify(
-      appointment.faculty,
-      "appointment",
-      "Reschedule requested",
-      `${req.user.name} requested a consultation reschedule.`,
-      appointment.id,
-    );
+    await Promise.all([
+      logActivity(
+        "appointment_reschedule_requested",
+        req.user.id,
+        "Appointment",
+        appointment.id,
+      ),
+      notify(
+        appointment.faculty,
+        "appointment",
+        "Reschedule Request",
+        `${req.user.name} requested to reschedule an approved consultation.`,
+        appointment.id,
+      ),
+    ]);
     res.json({
       message: "Reschedule request sent to the faculty member.",
       appointment,
     });
   },
 );
+router.put("/:id/reschedule-request", authorize("faculty"), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id))
+    return res.status(400).json({ message: "Invalid appointment ID." });
+  const decision = req.body.decision;
+  if (!["Approved", "Rejected"].includes(decision))
+    return res.status(400).json({ message: "Select a valid reschedule decision." });
+  const decisionNote = (req.body.note || "").trim();
+  if (decisionNote.length > 500)
+    return res.status(400).json({
+      message: "Decision note cannot exceed 500 characters.",
+    });
+  const appointment = await Appointment.findOne({
+    _id: req.params.id,
+    faculty: req.user.id,
+  });
+  if (!appointment)
+    return res.status(404).json({ message: "Appointment not found." });
+  if (
+    !appointment.rescheduleRequested ||
+    appointment.rescheduleRequestStatus !== "Pending"
+  )
+    return res.status(409).json({
+      message: "This appointment has no pending reschedule request.",
+    });
+  if (!["Approved", "Rescheduled"].includes(appointment.status))
+    return res.status(400).json({
+      message: "This appointment is no longer eligible for rescheduling.",
+    });
+  appointment.rescheduleRequested = false;
+  appointment.rescheduleRequestStatus = decision;
+  appointment.rescheduleReviewedAt = new Date();
+  appointment.rescheduleReviewedBy = req.user.id;
+  appointment.rescheduleDecisionNote = decisionNote;
+  if (decision === "Approved") appointment.status = "Needs Reschedule";
+  await appointment.save();
+  const approved = decision === "Approved";
+  await Promise.all([
+    logActivity(
+      `appointment_reschedule_${decision.toLowerCase()}`,
+      req.user.id,
+      "Appointment",
+      appointment.id,
+    ),
+    notify(
+      appointment.student,
+      "appointment",
+      `Reschedule Request ${decision}`,
+      approved
+        ? "Your faculty member approved your reschedule request. Please select another available consultation schedule."
+        : "Your consultation reschedule request was not approved. Your current consultation schedule remains unchanged.",
+      appointment.id,
+    ),
+  ]);
+  res.json({
+    message: approved
+      ? "Reschedule request approved. The Student can now choose a new schedule."
+      : "Reschedule request rejected. The current schedule remains unchanged.",
+    appointment,
+  });
+});
 router.put("/:id/reschedule", authorize("student"), async (req, res) => {
   if (
     !mongoose.isValidObjectId(req.params.id) ||

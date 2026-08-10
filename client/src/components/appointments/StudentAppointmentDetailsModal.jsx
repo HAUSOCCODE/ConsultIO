@@ -178,6 +178,41 @@ export default function StudentAppointmentDetailsModal({
             </Section>
           )}
 
+          {(appointment.rescheduleRequestStatus ||
+            appointment.rescheduleRequested) && (
+            <Section title="Reschedule Information">
+              <Detail
+                label="Status"
+                value={
+                  appointment.rescheduleRequestStatus ||
+                  (appointment.rescheduleRequested ? "Pending" : "Not provided")
+                }
+              />
+              <Detail
+                label="Requested"
+                value={safeDate(appointment.rescheduleRequestedAt)}
+              />
+              <Detail
+                label="Reason"
+                value={appointment.rescheduleRequestNote}
+                wide
+              />
+              {appointment.rescheduleReviewedAt && (
+                <Detail
+                  label="Reviewed"
+                  value={safeDate(appointment.rescheduleReviewedAt)}
+                />
+              )}
+              {appointment.rescheduleDecisionNote && (
+                <Detail
+                  label="Faculty Decision"
+                  value={appointment.rescheduleDecisionNote}
+                  wide
+                />
+              )}
+            </Section>
+          )}
+
           <Section title="Supporting Documents">
             <div className="sm:col-span-2">
               <SupportingDocumentViewer appointment={appointment} />

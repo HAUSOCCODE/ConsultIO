@@ -174,6 +174,9 @@ export const requestFacultyReschedule = async (req, res) => {
   appointment.responseNote = (req.body.note || "").trim();
   appointment.rescheduleRequested = false;
   appointment.rescheduleRequestNote = "";
+  appointment.rescheduleRequestStatus = "Approved";
+  appointment.rescheduleReviewedAt = new Date();
+  appointment.rescheduleReviewedBy = req.user.id;
   await appointment.save();
   await Promise.all([
     logActivity(

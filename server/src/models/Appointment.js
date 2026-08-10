@@ -61,6 +61,17 @@ const appointmentSchema = new mongoose.Schema(
     responseNote: { type: String, trim: true, maxlength: 500 },
     rescheduleRequested: { type: Boolean, default: false },
     rescheduleRequestNote: { type: String, trim: true, maxlength: 500 },
+    rescheduleRequestStatus: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected"],
+    },
+    rescheduleRequestedAt: Date,
+    rescheduleReviewedAt: Date,
+    rescheduleReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    rescheduleDecisionNote: { type: String, trim: true, maxlength: 500 },
   },
   { timestamps: true },
 );

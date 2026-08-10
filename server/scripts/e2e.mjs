@@ -622,6 +622,16 @@ try {
         finalBooking.data.appointment._id,
     "schedule details include only the exact schedule's approved student",
   );
+  const approvedCancellation = await request(
+    `/appointments/${finalBooking.data.appointment._id}/cancel`,
+    { method: "PUT", token: studentLogin.data.token },
+  );
+  check(
+    approvedCancellation.status === 409 &&
+      (await Appointment.findById(finalBooking.data.appointment._id)).status ===
+        "Approved",
+    "Student cannot cancel an Approved appointment",
+  );
   const studentCannotReadFacultySchedule = await request(
     `/availability/${schedule.data.availability._id}/details`,
     { token: studentLogin.data.token },
@@ -647,29 +657,150 @@ try {
     method: "POST",
     body: { identifier: outsiderFaculty.email, password },
   });
+  const emptyRescheduleReason = await request(
+    `/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    { method: "PUT", token: studentLogin.data.token, body: { reason: "   " } },
+  );
+  check(
+    emptyRescheduleReason.status === 400,
+    "Student reschedule request requires a meaningful reason",
+  );
+  const foreignStudentRequest = await request(
+    `/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    {
+      method: "PUT",
+      token: extraStudentTokens[0],
+      body: { reason: "Trying another Student's appointment" },
+    },
+  );
+  check(
+    foreignStudentRequest.status === 404,
+    "Student cannot request rescheduling for another Student's appointment",
+  );
+  const preservedBeforeReview = await Appointment.findById(
+    finalBooking.data.appointment._id,
+  ).lean();
+  const studentRequest = await request(
+    `/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    {
+      method: "PUT",
+      token: studentLogin.data.token,
+      body: { reason: "Faculty consultation conflicts with an exam." },
+    },
+  );
+  const pendingReview = await Appointment.findById(
+    finalBooking.data.appointment._id,
+  ).lean();
+  check(
+    studentRequest.status === 200 &&
+      pendingReview.status === "Approved" &&
+      pendingReview.rescheduleRequestStatus === "Pending" &&
+      pendingReview.rescheduleRequestNote ===
+        "Faculty consultation conflicts with an exam." &&
+      String(pendingReview.availability) === schedule.data.availability._id,
+    "Student request remains assigned and Pending Faculty review",
+  );
+  const duplicateRequest = await request(
+    `/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    {
+      method: "PUT",
+      token: studentLogin.data.token,
+      body: { reason: "A duplicate reschedule request." },
+    },
+  );
+  check(
+    duplicateRequest.status === 409,
+    "Student cannot submit a duplicate pending reschedule request",
+  );
+  const facultyPendingRequests = await request("/appointments/mine", {
+    token: facultyLogin.data.token,
+  });
+  check(
+    facultyPendingRequests.data.appointments.some(
+      (item) =>
+        item._id === finalBooking.data.appointment._id &&
+        item.rescheduleRequestStatus === "Pending" &&
+        item.rescheduleRequestNote ===
+          "Faculty consultation conflicts with an exam.",
+    ),
+    "Faculty sees the pending request and Student reason",
+  );
   const outsiderAttempt = await request(
-    `/availability/${schedule.data.availability._id}/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
-    { method: "PUT", token: outsiderLogin.data.token, body: {} },
+    `/appointments/${finalBooking.data.appointment._id}/reschedule-request`,
+    {
+      method: "PUT",
+      token: outsiderLogin.data.token,
+      body: { decision: "Approved" },
+    },
   );
   check(
     outsiderAttempt.status === 404 &&
-      (await Appointment.findById(finalBooking.data.appointment._id)).status ===
-        "Approved",
-    "Faculty cannot reschedule another Faculty member's appointment",
+      (await Appointment.findById(finalBooking.data.appointment._id))
+        .rescheduleRequestStatus === "Pending",
+    "Faculty cannot review another Faculty member's reschedule request",
   );
-  const facultyReschedule = await request(
-    `/availability/${schedule.data.availability._id}/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
-    { method: "PUT", token: facultyLogin.data.token, body: {} },
+  const facultyRejects = await request(
+    `/appointments/${finalBooking.data.appointment._id}/reschedule-request`,
+    {
+      method: "PUT",
+      token: facultyLogin.data.token,
+      body: { decision: "Rejected", note: "The original schedule is required." },
+    },
   );
-  const releasedAppointment = await Appointment.findById(
+  const rejectedReschedule = await Appointment.findById(
     finalBooking.data.appointment._id,
   );
   check(
-    facultyReschedule.status === 200 &&
+    facultyRejects.status === 200 &&
+      rejectedReschedule.status === "Approved" &&
+      rejectedReschedule.rescheduleRequestStatus === "Rejected" &&
+      String(rejectedReschedule.availability) === schedule.data.availability._id,
+    "Faculty rejection keeps the approved appointment on its current schedule",
+  );
+  check(
+    Boolean(
+      await Notification.exists({
+        recipient: studentLogin.data.user.id,
+        relatedEntityId: finalBooking.data.appointment._id,
+        title: "Reschedule Request Rejected",
+      }),
+    ),
+    "Faculty rejection notifies the Student",
+  );
+  const secondStudentRequest = await request(
+    `/appointments/${finalBooking.data.appointment._id}/request-reschedule`,
+    {
+      method: "PUT",
+      token: studentLogin.data.token,
+      body: { reason: "A new exam schedule still conflicts." },
+    },
+  );
+  check(
+    secondStudentRequest.status === 200,
+    "Student may submit a new request after rejection",
+  );
+  const facultyApproves = await request(
+    `/appointments/${finalBooking.data.appointment._id}/reschedule-request`,
+    {
+      method: "PUT",
+      token: facultyLogin.data.token,
+      body: { decision: "Approved" },
+    },
+  );
+  const releasedAppointment = await Appointment.findById(
+    finalBooking.data.appointment._id,
+  ).lean();
+  check(
+    facultyApproves.status === 200 &&
       releasedAppointment.status === "Needs Reschedule" &&
+      releasedAppointment.rescheduleRequestStatus === "Approved" &&
       String(releasedAppointment.availability) ===
-        schedule.data.availability._id,
-    "Faculty preserves the appointment and marks it Needs Reschedule",
+        schedule.data.availability._id &&
+      releasedAppointment.subject === preservedBeforeReview.subject &&
+      releasedAppointment.reason === preservedBeforeReview.reason &&
+      releasedAppointment.createdAt.getTime() ===
+        preservedBeforeReview.createdAt.getTime(),
+    "Faculty approval preserves the appointment and releases its schedule assignment",
   );
   const releasedDetails = await request(
     `/availability/${schedule.data.availability._id}/details`,
@@ -677,16 +808,17 @@ try {
   );
   check(
     releasedDetails.data.approvedStudents.length === 0,
-    "released student no longer occupies the old schedule",
+    "approved reschedule no longer occupies the old schedule",
   );
-  const rescheduleNotification = await Notification.findOne({
-    recipient: studentLogin.data.user.id,
-    relatedEntityId: finalBooking.data.appointment._id,
-    title: "Consultation Reschedule Required",
-  });
   check(
-    Boolean(rescheduleNotification),
-    "Faculty reschedule request notifies the correct student",
+    Boolean(
+      await Notification.exists({
+        recipient: studentLogin.data.user.id,
+        relatedEntityId: finalBooking.data.appointment._id,
+        title: "Reschedule Request Approved",
+      }),
+    ),
+    "Faculty approval notifies the Student to choose a new schedule",
   );
   const replacementStartAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
   const replacementEndAt = new Date(

@@ -19,6 +19,13 @@ export default function AppointmentsPage({ filter }) {
   const [details, setDetails] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [rescheduleSlots, setRescheduleSlots] = useState([]);
+  const [requestTarget, setRequestTarget] = useState(null);
+  const [requestReason, setRequestReason] = useState("");
+  const [requestError, setRequestError] = useState("");
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [availabilityCapacity, setAvailabilityCapacity] = useState([]);
   const [approvalWarning, setApprovalWarning] = useState(null);
@@ -106,21 +113,57 @@ export default function AppointmentsPage({ filter }) {
       setMessage(requestError.message);
     }
   };
-  const requestReschedule = async (appointment) => {
+  const requestReschedule = async () => {
+    const reason = requestReason.trim();
+    if (reason.length < 5) {
+      setRequestError("Please enter a meaningful reason of at least 5 characters.");
+      return;
+    }
+    if (reason.length > 500) {
+      setRequestError("Reason cannot exceed 500 characters.");
+      return;
+    }
+    setRequestSubmitting(true);
     try {
       const data = await api(
-        `/appointments/${appointment._id}/request-reschedule`,
+        `/appointments/${requestTarget._id}/request-reschedule`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ reason }),
+        },
+      );
+      setMessage(data.message);
+      setRequestTarget(null);
+      setRequestReason("");
+      setRequestError("");
+      load();
+    } catch (requestError) {
+      setRequestError(requestError.message);
+    } finally {
+      setRequestSubmitting(false);
+    }
+  };
+  const reviewReschedule = async () => {
+    setReviewSubmitting(true);
+    try {
+      const data = await api(
+        `/appointments/${reviewTarget.appointment._id}/reschedule-request`,
         {
           method: "PUT",
           body: JSON.stringify({
-            note: window.prompt("Why do you need to reschedule?") || "",
+            decision: reviewTarget.decision,
+            note: reviewNote.trim(),
           }),
         },
       );
       setMessage(data.message);
+      setReviewTarget(null);
+      setReviewNote("");
       load();
     } catch (requestError) {
       setMessage(requestError.message);
+    } finally {
+      setReviewSubmitting(false);
     }
   };
   const approve = async (appointment) => {
@@ -360,6 +403,97 @@ export default function AppointmentsPage({ filter }) {
           </div>,
           document.body,
         )}
+      {requestTarget &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(event) =>
+              event.target === event.currentTarget &&
+              !requestSubmitting &&
+              setRequestTarget(null)
+            }
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="request-reschedule-title"
+              onMouseDown={(event) => event.stopPropagation()}
+              className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+            >
+              <h2 id="request-reschedule-title" className="text-xl font-bold text-maroon-900">
+                Request Consultation Reschedule
+              </h2>
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="font-bold text-slate-800">Current Consultation</h3>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  <ModalDetail label="Faculty" value={requestTarget.faculty?.name} />
+                  <ModalDetail label="Date" value={new Date(requestTarget.startAt).toLocaleDateString()} />
+                  <ModalDetail label="Time" value={`${formatClock(requestTarget.startAt)} – ${formatClock(requestTarget.endAt)}`} />
+                  <ModalDetail label="Mode" value={requestTarget.consultationMode} />
+                  <ModalDetail label="Location / Meeting Platform" value={requestTarget.meetingPlatform || requestTarget.location} wide />
+                </dl>
+              </div>
+              <label className="mt-5 block text-sm font-semibold text-slate-700">
+                Reason for Reschedule <span className="text-red-700">*</span>
+                <textarea
+                  autoFocus
+                  required
+                  maxLength={500}
+                  rows={5}
+                  value={requestReason}
+                  onChange={(event) => {
+                    setRequestReason(event.target.value);
+                    setRequestError("");
+                  }}
+                  placeholder="Please explain why you need to reschedule this consultation."
+                  className="field mt-2 resize-y"
+                />
+              </label>
+              <div className="mt-1 flex justify-between gap-3 text-xs text-slate-500">
+                <span>Minimum 5 characters</span>
+                <span>{requestReason.length}/500</span>
+              </div>
+              {requestError && <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{requestError}</p>}
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" disabled={requestSubmitting} onClick={() => { setRequestTarget(null); setRequestReason(""); setRequestError(""); }} className="btn-secondary">
+                  Cancel
+                </button>
+                <button type="button" disabled={requestSubmitting || requestReason.trim().length < 5} onClick={requestReschedule} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                  {requestSubmitting ? "Submitting..." : "Submit Reschedule Request"}
+                </button>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
+      {reviewTarget &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" onMouseDown={(event) => event.target === event.currentTarget && !reviewSubmitting && setReviewTarget(null)}>
+            <section role="alertdialog" aria-modal="true" aria-labelledby="review-reschedule-title" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <h2 id="review-reschedule-title" className="text-xl font-bold text-maroon-900">
+                {reviewTarget.decision === "Approved" ? "Approve Reschedule Request?" : "Reject Reschedule Request?"}
+              </h2>
+              <p className="mt-3 text-sm text-slate-600">
+                {reviewTarget.decision === "Approved"
+                  ? "The Student will be removed from the current consultation schedule and may select another available schedule. The appointment record and consultation data will be preserved."
+                  : "The appointment will remain approved and its current schedule will remain unchanged."}
+              </p>
+              {reviewTarget.decision === "Rejected" && (
+                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                  Optional reason
+                  <textarea maxLength={500} rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} className="field mt-2 resize-y" />
+                </label>
+              )}
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" disabled={reviewSubmitting} onClick={() => { setReviewTarget(null); setReviewNote(""); }} className="btn-secondary">Cancel</button>
+                <button type="button" disabled={reviewSubmitting} onClick={reviewReschedule} className={reviewTarget.decision === "Approved" ? "btn-primary" : "rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white"}>
+                  {reviewSubmitting ? "Saving..." : reviewTarget.decision === "Approved" ? "Approve Reschedule" : "Reject Reschedule"}
+                </button>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        )}
       {approvalWarning &&
         createPortal(
           <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
@@ -530,12 +664,14 @@ export default function AppointmentsPage({ filter }) {
                     </p>
                   )}
                   {user.role === "faculty" && x.rescheduleRequested && (
-                    <p className="mt-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-800">
-                      Student requested rescheduling
-                      {x.rescheduleRequestNote
-                        ? `: ${x.rescheduleRequestNote}`
-                        : "."}
-                    </p>
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      <p className="font-bold">Pending Reschedule Request</p>
+                      <p className="mt-1 break-words">Reason: {x.rescheduleRequestNote}</p>
+                      <p className="mt-1 text-xs text-amber-800">Requested: {new Date(x.rescheduleRequestedAt || x.updatedAt).toLocaleString()}</p>
+                    </div>
+                  )}
+                  {user.role === "student" && x.rescheduleRequestStatus === "Pending" && (
+                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Reschedule: Pending Faculty Approval</p>
                   )}
                   {user.role === "student" && x.status === "Needs Reschedule" && (
                     <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
@@ -579,6 +715,7 @@ export default function AppointmentsPage({ filter }) {
                     </>
                   )}
                   {user.role === "faculty" &&
+                    !x.rescheduleRequested &&
                     ["Approved", "Rescheduled"].includes(x.status) && (
                       <button
                         onClick={() => update(x._id, "Completed")}
@@ -597,8 +734,14 @@ export default function AppointmentsPage({ filter }) {
                         Choose New Schedule
                       </button>
                     )}
+                  {user.role === "faculty" && x.rescheduleRequestStatus === "Pending" && (
+                    <>
+                      <button type="button" onClick={() => setReviewTarget({ appointment: x, decision: "Approved" })} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white">Approve Reschedule</button>
+                      <button type="button" onClick={() => setReviewTarget({ appointment: x, decision: "Rejected" })} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700">Reject Reschedule</button>
+                    </>
+                  )}
                   {user.role === "student" &&
-                    ["Pending", "Approved", "Rescheduled"].includes(x.status) &&
+                    x.status === "Pending" &&
                     new Date(x.startAt) > new Date() && (
                       <button
                         onClick={() => setCancelTarget(x)}
@@ -612,10 +755,17 @@ export default function AppointmentsPage({ filter }) {
                     new Date(x.startAt) > new Date() && (
                       <button
                         type="button"
-                        onClick={() => requestReschedule(x)}
-                        className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                        disabled={x.rescheduleRequestStatus === "Pending" || x.rescheduleRequested}
+                        onClick={() => {
+                          setRequestTarget(x);
+                          setRequestReason("");
+                          setRequestError("");
+                        }}
+                        className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Request Reschedule
+                        {x.rescheduleRequestStatus === "Pending" || x.rescheduleRequested
+                          ? "Reschedule Requested"
+                          : "Request Reschedule"}
                       </button>
                     )}
                   {x.supportingDocument?.name &&
@@ -647,6 +797,25 @@ function Capacity({ label, value, wide = false }) {
         {label}
       </dt>
       <dd className="mt-1 font-bold text-slate-800">{value}</dd>
+    </div>
+  );
+}
+
+const formatClock = (value) =>
+  new Date(value).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+function ModalDetail({ label, value, wide = false }) {
+  return (
+    <div className={wide ? "sm:col-span-2" : ""}>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words text-slate-800">
+        {value || "Not provided"}
+      </dd>
     </div>
   );
 }
