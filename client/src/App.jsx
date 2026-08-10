@@ -31,9 +31,12 @@ import ReportsAnalytics from "./pages/Admin/ReportsAnalytics";
 import SystemSettings from "./pages/Admin/SystemSettings";
 import AdminNotifications from "./pages/Admin/AdminNotifications";
 import NotFoundPage from "./pages/Public/NotFoundPage";
+import RouteDocumentTitle from "./components/RouteDocumentTitle";
 export default function App() {
   return (
-    <Routes>
+    <>
+      <RouteDocumentTitle />
+      <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/get-started" element={<RoleSelectionPage />} />
       <Route path="/student/login" element={<StudentLogin />} />
@@ -101,6 +104,7 @@ export default function App() {
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage dashboard="/" />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

@@ -155,8 +155,8 @@ export default function UserManagement({ initialTab = "All Users" }) {
                     >
                       {user.name || "Unnamed user"}
                     </p>
-                    <p className="mt-1 break-words text-sm text-slate-600">
-                      {user.email}
+                    <p className="mt-1 break-all text-sm lowercase text-slate-600">
+                      {user.email?.toLowerCase()}
                     </p>
                     <p className="mt-1 text-sm capitalize text-slate-500">
                       {user.role}
@@ -216,8 +216,11 @@ export default function UserManagement({ initialTab = "All Users" }) {
                       </p>
                     </td>
                     <td className="px-3 py-4">
-                      <p className="truncate" title={user.email}>
-                        {user.email || "—"}
+                      <p
+                        className="truncate lowercase"
+                        title={user.email?.toLowerCase()}
+                      >
+                        {user.email?.toLowerCase() || "—"}
                       </p>
                     </td>
                     <td className="px-3 py-4 capitalize">{user.role}</td>
@@ -335,7 +338,8 @@ function UserDetails({ user, loading, onClose, onReset, onAction }) {
       user.role === "student"
         ? "Official HAU Student Email"
         : "Official HAU Faculty Email",
-      user.email,
+      user.email?.toLowerCase(),
+      "email",
     ],
     ["Role", user.role],
     ["Registration Status", user.registrationStatus],
@@ -386,9 +390,11 @@ function UserDetails({ user, loading, onClose, onReset, onAction }) {
                 {user.name?.[0] || "U"}
               </span>
             )}
-            <div>
+            <div className="min-w-0">
               <p className="font-bold text-slate-900">{user.name}</p>
-              <p className="text-sm text-slate-600">{user.email}</p>
+              <p className="break-all text-sm lowercase text-slate-600">
+                {user.email?.toLowerCase()}
+              </p>
             </div>
           </div>
           <Details title="Account Information" values={account} />
@@ -448,10 +454,12 @@ function Details({ title, values }) {
         {title}
       </h3>
       <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-        {values.map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-slate-50 p-3">
+        {values.map(([label, value, format]) => (
+          <div key={label} className="min-w-0 rounded-lg bg-slate-50 p-3">
             <dt className="text-xs font-semibold text-slate-500">{label}</dt>
-            <dd className="mt-1 break-words text-sm font-medium capitalize text-slate-800">
+            <dd
+              className={`mt-1 text-sm font-medium text-slate-800 ${format === "email" ? "break-all lowercase" : "break-words capitalize"}`}
+            >
               {value || "Not available"}
             </dd>
           </div>
