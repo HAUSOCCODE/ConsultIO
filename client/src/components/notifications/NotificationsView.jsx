@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   CheckSquare,
   Clock3,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
@@ -34,6 +35,8 @@ export default function NotificationsPage({ compact = false }) {
   const [filter, setFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState(null);
+  const [confirmation, setConfirmation] = useState(null);
+  const [mutating, setMutating] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -64,6 +67,11 @@ export default function NotificationsPage({ compact = false }) {
             : item,
         ),
       );
+      setSelected((current) =>
+        current?._id === id
+          ? { ...current, isRead: true, readAt: new Date().toISOString() }
+          : current,
+      );
       setUnreadCount((current) => Math.max(0, current - 1));
       refreshBadge();
     } catch {
@@ -86,25 +94,80 @@ export default function NotificationsPage({ compact = false }) {
       toast.error("Unable to update notifications. Please try again.");
     }
   };
+  const confirmDelete = (notification) =>
+    setConfirmation({ type: "delete", notification });
+  const confirmClear = (scope) => setConfirmation({ type: scope });
+  const performConfirmedAction = async () => {
+    if (!confirmation || mutating) return;
+    setMutating(true);
+    try {
+      if (confirmation.type === "delete") {
+        const notification = confirmation.notification;
+        await api(`/notifications/${notification._id}`, { method: "DELETE" });
+        setNotifications((current) =>
+          current.filter((item) => item._id !== notification._id),
+        );
+        if (!notification.isRead)
+          setUnreadCount((current) => Math.max(0, current - 1));
+        if (selected?._id === notification._id) setSelected(null);
+        toast.success("Notification deleted.");
+      } else if (confirmation.type === "read") {
+        await api("/notifications/read", { method: "DELETE" });
+        setNotifications((current) =>
+          current.filter((notification) => !notification.isRead),
+        );
+        if (selected?.isRead) setSelected(null);
+        toast.success("Read notifications cleared.");
+      } else {
+        await api("/notifications", { method: "DELETE" });
+        setNotifications([]);
+        setUnreadCount(0);
+        setSelected(null);
+        toast.success("All notifications cleared.");
+      }
+      setConfirmation(null);
+      refreshBadge();
+    } catch {
+      toast.error(
+        confirmation.type === "delete"
+          ? "Unable to delete notification. Please try again."
+          : "Unable to clear notifications. Please try again.",
+      );
+    } finally {
+      setMutating(false);
+    }
+  };
 
   if (error && notifications.length === 0)
     return <ErrorState message={error} onRetry={load} />;
   if (compact)
     return (
-      <CompactNotifications
-        notifications={notifications}
-        unreadCount={unreadCount}
-        loading={loading}
-        error={error}
-        filter={filter}
-        setFilter={setFilter}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        selected={selected}
-        setSelected={setSelected}
-        read={read}
-        readAll={readAll}
-      />
+      <>
+        <CompactNotifications
+          notifications={notifications}
+          unreadCount={unreadCount}
+          loading={loading}
+          error={error}
+          filter={filter}
+          setFilter={setFilter}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          selected={selected}
+          setSelected={setSelected}
+          read={read}
+          readAll={readAll}
+          confirmDelete={confirmDelete}
+          confirmClear={confirmClear}
+        />
+        {confirmation && (
+          <DeleteConfirmationModal
+            action={confirmation.type}
+            loading={mutating}
+            onCancel={() => !mutating && setConfirmation(null)}
+            onConfirm={performConfirmedAction}
+          />
+        )}
+      </>
     );
   return (
     <div className="space-y-6">
@@ -115,15 +178,12 @@ export default function NotificationsPage({ compact = false }) {
             Stay updated with your consultation activities.
           </p>
         </div>
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            onClick={readAll}
-            className="btn-secondary py-2"
-          >
-            Mark All as Read
-          </button>
-        )}
+        <NotificationActions
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onReadAll={readAll}
+          onClear={confirmClear}
+        />
       </div>
       {error && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -185,6 +245,13 @@ export default function NotificationsPage({ compact = false }) {
                           Mark as Read
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => confirmDelete(notification)}
+                        className="text-sm font-bold text-red-700"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -192,6 +259,14 @@ export default function NotificationsPage({ compact = false }) {
             );
           })}
         </div>
+      )}
+      {confirmation && (
+        <DeleteConfirmationModal
+          action={confirmation.type}
+          loading={mutating}
+          onCancel={() => !mutating && setConfirmation(null)}
+          onConfirm={performConfirmedAction}
+        />
       )}
     </div>
   );
@@ -210,6 +285,8 @@ function CompactNotifications({
   setSelected,
   read,
   readAll,
+  confirmDelete,
+  confirmClear,
 }) {
   const shown = notifications.filter((notification) =>
     filter === "Unread"
@@ -258,15 +335,12 @@ function CompactNotifications({
             Stay updated with your consultation activities.
           </p>
         </div>
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            onClick={readAll}
-            className="btn-secondary py-2"
-          >
-            Mark All as Read
-          </button>
-        )}
+        <NotificationActions
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onReadAll={readAll}
+          onClear={confirmClear}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         {["All", "Unread", "Read"].map((name) => (
@@ -301,10 +375,10 @@ function CompactNotifications({
               <thead className="bg-maroon-800 text-white">
                 <tr>
                   <th className="w-[14%] px-4 py-3">Type</th>
-                  <th className="w-[38%] px-4 py-3">Notification</th>
+                  <th className="w-[34%] px-4 py-3">Notification</th>
                   <th className="w-[22%] px-4 py-3">Date &amp; Time</th>
                   <th className="w-[12%] px-4 py-3">Status</th>
-                  <th className="w-[14%] px-4 py-3">Action</th>
+                  <th className="w-[18%] px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -357,6 +431,13 @@ function CompactNotifications({
                             Mark Read
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => confirmDelete(notification)}
+                          className="font-semibold text-red-700 hover:underline"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -415,6 +496,13 @@ function CompactNotifications({
                       Mark as Read
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => confirmDelete(notification)}
+                    className="text-sm font-semibold text-red-700"
+                  >
+                    Delete
+                  </button>
                 </div>
               </article>
             ))}
@@ -442,6 +530,124 @@ function CompactNotifications({
   );
 }
 
+function NotificationActions({
+  notifications,
+  unreadCount,
+  onReadAll,
+  onClear,
+}) {
+  if (notifications.length === 0) return null;
+  const hasRead = notifications.some((notification) => notification.isRead);
+  return (
+    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+      {unreadCount > 0 && (
+        <button
+          type="button"
+          onClick={onReadAll}
+          className="btn-secondary w-full py-2 sm:w-auto"
+        >
+          Mark All as Read
+        </button>
+      )}
+      {hasRead && (
+        <button
+          type="button"
+          onClick={() => onClear("read")}
+          className="btn-secondary w-full py-2 sm:w-auto"
+        >
+          Clear Read
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => onClear("all")}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 sm:w-auto"
+      >
+        <Trash2 size={16} aria-hidden="true" />
+        Clear All
+      </button>
+    </div>
+  );
+}
+
+function DeleteConfirmationModal({ action, loading, onCancel, onConfirm }) {
+  const isDelete = action === "delete";
+  const isRead = action === "read";
+  const title = isDelete
+    ? "Delete Notification?"
+    : isRead
+      ? "Clear Read Notifications?"
+      : "Clear All Notifications?";
+  const message = isDelete
+    ? "Are you sure you want to delete this notification?"
+    : isRead
+      ? "This will permanently remove all of your read notifications."
+      : "This will permanently remove all of your notifications.";
+  const confirmLabel = isDelete ? "Delete" : isRead ? "Clear Read" : "Clear All";
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    const escape = (event) => event.key === "Escape" && !loading && onCancel();
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", escape);
+    };
+  }, [loading, onCancel]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[10000] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
+      onMouseDown={(event) =>
+        event.target === event.currentTarget && !loading && onCancel()
+      }
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-notification-title"
+        aria-describedby="delete-notification-description"
+        onMouseDown={(event) => event.stopPropagation()}
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
+      >
+        <h2
+          id="delete-notification-title"
+          className="text-xl font-bold text-maroon-900"
+        >
+          {title}
+        </h2>
+        <div
+          id="delete-notification-description"
+          className="mt-3 space-y-2 text-sm leading-6 text-slate-600"
+        >
+          <p>{message}</p>
+          <p>This action cannot be undone.</p>
+        </div>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="btn-secondary w-full sm:w-auto"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-red-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {loading ? (isDelete ? "Deleting..." : "Clearing...") : confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 function NotificationEmptyState() {
   return (
     <>
@@ -450,10 +656,10 @@ function NotificationEmptyState() {
           <thead className="bg-maroon-800 text-white">
             <tr>
               <th className="w-[14%] px-4 py-3">Type</th>
-              <th className="w-[38%] px-4 py-3">Notification</th>
+              <th className="w-[34%] px-4 py-3">Notification</th>
               <th className="w-[22%] px-4 py-3">Date &amp; Time</th>
               <th className="w-[12%] px-4 py-3">Status</th>
-              <th className="w-[14%] px-4 py-3">Action</th>
+              <th className="w-[18%] px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
