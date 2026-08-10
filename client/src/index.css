@@ -2,6 +2,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(1rem, -0.25rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0.75rem, 0, 0);
+  }
+}
+
+.toast-enter {
+  animation: toast-enter 220ms ease-out both;
+}
+
+.toast-exit {
+  animation: toast-exit 220ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter,
+  .toast-exit {
+    animation-duration: 1ms;
+  }
+}
 @layer base {
   html {
     scroll-behavior: smooth;

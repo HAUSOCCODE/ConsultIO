@@ -1,30 +1,33 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
+import { useToast } from "../../context/ToastContext";
 
 export default function SystemSettings() {
   const { user } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirm: "",
   });
-  const [message, setMessage] = useState("");
+  const [validationError, setValidationError] = useState("");
   const submit = async (e) => {
     e.preventDefault();
     if (form.newPassword !== form.confirm) {
-      setMessage("New passwords do not match.");
+      setValidationError("New passwords do not match.");
       return;
     }
+    setValidationError("");
     try {
       const d = await api("/admin/settings/password", {
         method: "PUT",
         body: JSON.stringify(form),
       });
-      setMessage(d.message);
+      toast.success(d.message || "Password changed successfully.");
       setForm({ currentPassword: "", newPassword: "", confirm: "" });
     } catch (e) {
-      setMessage(e.message);
+      toast.error(e.message || "Unable to change password.");
     }
   };
   return (
@@ -46,9 +49,9 @@ export default function SystemSettings() {
       </section>
       <section className="rounded-2xl border bg-white p-6">
         <h2 className="text-xl font-bold text-maroon-900">Change Password</h2>
-        {message && (
-          <p className="mt-4 rounded-lg bg-maroon-50 p-3 text-sm text-maroon-800">
-            {message}
+        {validationError && (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {validationError}
           </p>
         )}
         <form onSubmit={submit} className="mt-6 space-y-4">

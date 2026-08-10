@@ -11,11 +11,12 @@ import {
   getAppointmentDisplayStatus,
   isAwaitingFacultyUpdate,
 } from "../../utils/appointmentStatus";
+import { useToast } from "../../context/ToastContext";
 const HISTORY_ITEMS_PER_PAGE = 6;
 export default function AppointmentsPage({ filter }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [items, setItems] = useState(null);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [appointmentTab, setAppointmentTab] = useState("Upcoming");
   const [historyTab, setHistoryTab] = useState("All");
@@ -54,11 +55,12 @@ export default function AppointmentsPage({ filter }) {
         method: "PUT",
         body: JSON.stringify({ status, ...extra }),
       });
-      setMessage(d.message);
+      if (status === "Rejected") toast.info(d.message);
+      else toast.success(d.message);
       load();
       return true;
     } catch (e) {
-      setMessage(e.message);
+      toast.error(e.message || "Unable to update the appointment.");
       return false;
     }
   };
@@ -78,7 +80,7 @@ export default function AppointmentsPage({ filter }) {
       );
       setRescheduleTarget(appointment);
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to load schedules.");
     }
   };
   const chooseStudentSchedule = async (appointment, availabilityId) => {
@@ -87,23 +89,23 @@ export default function AppointmentsPage({ filter }) {
         method: "PUT",
         body: JSON.stringify({ availabilityId }),
       });
-      setMessage(data.message);
+      toast.success(data.message);
       setRescheduleTarget(null);
       load();
       return true;
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to select the schedule.");
       return false;
     }
   };
   const cancel = async (id) => {
     try {
       const d = await api(`/appointments/${id}/cancel`, { method: "PUT" });
-      setMessage(d.message);
+      toast.success(d.message);
       setCancelTarget(null);
       load();
     } catch (e) {
-      setMessage(e.message);
+      toast.error(e.message || "Unable to cancel the appointment.");
     }
   };
   const document = async (appointment) => {
@@ -114,7 +116,7 @@ export default function AppointmentsPage({ filter }) {
       link.download = data.supportingDocument.name || "consultation-document";
       link.click();
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to open the document.");
     }
   };
   const requestReschedule = async () => {
@@ -136,13 +138,13 @@ export default function AppointmentsPage({ filter }) {
           body: JSON.stringify({ reason }),
         },
       );
-      setMessage(data.message);
+      toast.success(data.message);
       setRequestTarget(null);
       setRequestReason("");
       setRequestError("");
       load();
     } catch (requestError) {
-      setRequestError(requestError.message);
+      toast.error(requestError.message || "Unable to submit the reschedule request.");
     } finally {
       setRequestSubmitting(false);
     }
@@ -160,12 +162,13 @@ export default function AppointmentsPage({ filter }) {
           }),
         },
       );
-      setMessage(data.message);
+      if (reviewTarget.decision === "Rejected") toast.info(data.message);
+      else toast.success(data.message);
       setReviewTarget(null);
       setReviewNote("");
       load();
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to review the request.");
     } finally {
       setReviewSubmitting(false);
     }
@@ -247,11 +250,6 @@ export default function AppointmentsPage({ filter }) {
               : "Live appointment data from ConsultIO."}
         </p>
       </div>
-      {message && (
-        <div className="rounded-xl bg-maroon-50 p-4 text-sm text-maroon-800">
-          {message}
-        </div>
-      )}
       {user.role === "faculty" && !filter && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {["Today", "Upcoming", "Awaiting Update", "Completed", "No Show", "Cancelled"].map((name) => (

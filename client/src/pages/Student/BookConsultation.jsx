@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../../components/UI";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 const YEAR_LEVELS = [
   "1st Year",
@@ -52,6 +53,7 @@ const time = (value) =>
 
 export default function BookPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const availabilityRequest = useRef(0);
   const [faculty, setFaculty] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -61,7 +63,7 @@ export default function BookPage() {
   const [chosenSchedule, setChosenSchedule] = useState(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(() => initialForm(user.yearLevel));
-  const [message, setMessage] = useState("");
+  const [formError, setFormError] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,16 +103,14 @@ export default function BookPage() {
     setAvailabilityOpen(openModal);
     setSchedules([]);
     setScheduleLoading(true);
-    setMessage("");
+    setFormError("");
     try {
       const data = await api(`/availability/faculty/${member._id}`);
       if (requestId === availabilityRequest.current)
         setSchedules(Array.isArray(data?.schedules) ? data.schedules : []);
     } catch {
       if (requestId === availabilityRequest.current)
-        setMessage(
-          "Unable to load consultation information. Please try again.",
-        );
+        toast.error("Unable to load available schedules. Please try again.");
     } finally {
       if (requestId === availabilityRequest.current) setScheduleLoading(false);
     }
@@ -130,19 +130,19 @@ export default function BookPage() {
     if (!incoming.length) return;
     const combined = [...form.documents, ...incoming];
     if (combined.length > 5)
-      return setMessage("You may upload a maximum of 5 supporting files.");
+      return setFormError("You may upload a maximum of 5 supporting files.");
     if (incoming.some((file) => file.size > MAX_FILE_SIZE))
-      return setMessage("Each supporting file must be 10 MB or smaller.");
+      return setFormError("Each supporting file must be 10 MB or smaller.");
     if (
       incoming.some(
         (file) =>
           !allowedExtensions.has(file.name.split(".").pop()?.toLowerCase()),
       )
     )
-      return setMessage("This file type is not supported.");
+      return setFormError("This file type is not supported.");
     if (combined.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_SIZE)
-      return setMessage("Supporting documents must not exceed 25 MB in total.");
-    setMessage("");
+      return setFormError("Supporting documents must not exceed 25 MB in total.");
+    setFormError("");
     setForm({ ...form, documents: combined });
   };
 
@@ -156,11 +156,11 @@ export default function BookPage() {
     event.preventDefault();
     if (!selected || !chosenSchedule) return;
     if (!YEAR_LEVELS.includes(form.yearLevel)) {
-      setMessage("Please select your year level.");
+      setFormError("Please select your year level.");
       return;
     }
     setSubmitting(true);
-    setMessage("");
+    setFormError("");
     try {
       const request = new FormData();
       request.append("subject", form.subject);
@@ -181,7 +181,7 @@ export default function BookPage() {
       setForm(initialForm(user.yearLevel));
       await viewAvailability(selected, false);
       await loadFaculty();
-      setMessage(
+      toast.success(
         data.message || "Consultation request submitted successfully.",
       );
     } catch (requestError) {
@@ -192,7 +192,9 @@ export default function BookPage() {
         setChosenSchedule(null);
         await viewAvailability(selected);
       }
-      setMessage(requestError.message);
+      toast.error(
+        requestError.message || "Unable to book the consultation. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -215,11 +217,6 @@ export default function BookPage() {
           Select a faculty member to view their consultation availability.
         </p>
       </div>
-      {message && (
-        <div className="rounded-xl border border-maroon-200 bg-white p-4 text-sm text-maroon-800">
-          {message}
-        </div>
-      )}
       <label className="relative block max-w-xl">
         <Search className="absolute left-4 top-3.5 text-slate-400" size={19} />
         <input
@@ -607,9 +604,9 @@ export default function BookPage() {
                       }}
                     />
                   </label>
-                  {message && (
+                  {formError && (
                     <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                      {message}
+                      {formError}
                     </p>
                   )}
                   {form.documents.length > 0 && (

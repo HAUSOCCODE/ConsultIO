@@ -21,7 +21,6 @@ export default function FacultyScheduleDetailsModal({
   details,
   loading,
   error,
-  actionMessage,
   onClose,
   onRetry,
   onReschedule,
@@ -80,7 +79,6 @@ export default function FacultyScheduleDetailsModal({
               <button type="button" onClick={onRetry} className="btn-secondary mt-3">Try again</button>
             </div>
           )}
-          {actionMessage && <p className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{actionMessage}</p>}
           {schedule && (
             <>
               <section className="rounded-xl border border-slate-200 p-4">

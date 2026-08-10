@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
+import { useToast } from "../../context/ToastContext";
 export default function ProfilePage({ showSecurity = false }) {
   const { user, updateUser } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState({
     name: user.name || "",
     program: user.program || "",
@@ -13,7 +15,6 @@ export default function ProfilePage({ showSecurity = false }) {
     specialization: user.specialization || "",
     contactNumber: user.contactNumber || "",
   });
-  const [message, setMessage] = useState("");
   const save = async (e) => {
     e.preventDefault();
     try {
@@ -22,9 +23,9 @@ export default function ProfilePage({ showSecurity = false }) {
         body: JSON.stringify(form),
       });
       updateUser(data.user);
-      setMessage(data.message);
+      toast.success(data.message || "Profile updated successfully.");
     } catch (error) {
-      setMessage(error.message);
+      toast.error(error.message || "Unable to update profile.");
     }
   };
   return (
@@ -36,11 +37,6 @@ export default function ProfilePage({ showSecurity = false }) {
           Manage your ConsultIO account information.
         </p>
       </div>
-      {message && (
-        <div className="rounded-xl bg-maroon-50 p-4 text-sm text-maroon-800">
-          {message}
-        </div>
-      )}
       <form onSubmit={save} className="panel">
         <div className="mb-6 flex items-center gap-4">
           <span className="grid h-20 w-20 place-items-center rounded-2xl bg-maroon-800 text-3xl font-bold text-gold-300 shadow-lg ring-4 ring-maroon-100">
@@ -104,6 +100,7 @@ export default function ProfilePage({ showSecurity = false }) {
 }
 
 function SecuritySettings() {
+  const toast = useToast();
   const empty = { currentPassword: "", newPassword: "", confirmPassword: "" };
   const [passwords, setPasswords] = useState(empty);
   const [visible, setVisible] = useState({
@@ -111,8 +108,7 @@ function SecuritySettings() {
     newPassword: false,
     confirmPassword: false,
   });
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const change = (key, value) =>
@@ -127,16 +123,13 @@ function SecuritySettings() {
   };
   const submit = async (event) => {
     event.preventDefault();
-    setMessage("");
-    setIsError(false);
+    setValidationError("");
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setIsError(true);
-      setMessage("New password and confirmation do not match.");
+      setValidationError("New password and confirmation do not match.");
       return;
     }
     if (passwords.currentPassword === passwords.newPassword) {
-      setIsError(true);
-      setMessage("New password must be different from your current password.");
+      setValidationError("New password must be different from your current password.");
       return;
     }
     setSubmitting(true);
@@ -150,10 +143,9 @@ function SecuritySettings() {
         }),
       });
       clear();
-      setMessage(data.message || "Password changed successfully.");
+      toast.success(data.message || "Password changed successfully.");
     } catch (error) {
-      setIsError(true);
-      setMessage(error.message);
+      toast.error(error.message || "Unable to change password.");
     } finally {
       setSubmitting(false);
     }
@@ -178,12 +170,12 @@ function SecuritySettings() {
           Use at least 8 characters, one uppercase letter, and one number.
           Spaces are not allowed.
         </p>
-        {message && (
+        {validationError && (
           <p
-            role="status"
-            className={`mt-5 rounded-xl border p-3 text-sm ${isError ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-800"}`}
+            role="alert"
+            className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
           >
-            {message}
+            {validationError}
           </p>
         )}
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
@@ -229,8 +221,7 @@ function SecuritySettings() {
             type="button"
             onClick={() => {
               clear();
-              setMessage("");
-              setIsError(false);
+              setValidationError("");
             }}
             className="btn-secondary"
           >

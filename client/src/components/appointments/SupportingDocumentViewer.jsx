@@ -2,6 +2,7 @@ import { Download, Eye, FileText, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
+import { useToast } from "../../context/ToastContext";
 
 const extension = (name = "") => name.split(".").pop()?.toLowerCase() || "";
 const imageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
@@ -66,13 +67,13 @@ export default function SupportingDocumentViewer({
   appointment,
   emptyMessage = "No supporting documents were provided.",
 }) {
+  const toast = useToast();
   const documents = useMemo(() => metadataFor(appointment), [appointment]);
   const cache = useRef(new Map());
   const [previewTarget, setPreviewTarget] = useState(null);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
-  const [downloadError, setDownloadError] = useState("");
 
   const load = async (document) => {
     if (cache.current.has(document.endpoint))
@@ -98,7 +99,6 @@ export default function SupportingDocumentViewer({
   };
 
   const download = async (document) => {
-    setDownloadError("");
     try {
       const loaded = await load(document);
       const link = window.document.createElement("a");
@@ -106,7 +106,7 @@ export default function SupportingDocumentViewer({
       link.download = loaded.name || document.name || "consultation-document";
       link.click();
     } catch {
-      setDownloadError("Unable to download this file.");
+      toast.error("Unable to download this file.");
     }
   };
 
@@ -120,11 +120,6 @@ export default function SupportingDocumentViewer({
     return <p className="text-sm text-slate-600">{emptyMessage}</p>;
   return (
     <>
-      {downloadError && (
-        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {downloadError}
-        </p>
-      )}
       <div className="space-y-3">
         {documents.map((document, index) => {
           const kind = previewKind(document.mimeType, document.name);

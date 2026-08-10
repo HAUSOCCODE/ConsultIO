@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading, StatusBadge } from "../UI";
+import { useToast } from "../../context/ToastContext";
 export default function DataPage({ type, title }) {
+  const toast = useToast();
   const [data, setData] = useState(null);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const load = () => {
     const path =
@@ -38,7 +39,7 @@ export default function DataPage({ type, title }) {
   const toggle = async (item) => {
     try {
       const status = item.accountStatus === "Active" ? "Inactive" : "Active";
-      await api(`/admin/users/${item._id}/status`, {
+      const response = await api(`/admin/users/${item._id}/status`, {
         method: "PUT",
         body: JSON.stringify({ accountStatus: status }),
       });
@@ -47,8 +48,9 @@ export default function DataPage({ type, title }) {
           x._id === item._id ? { ...x, accountStatus: status } : x,
         ),
       );
+      toast.success(response.message || `Account ${status.toLowerCase()}.`);
     } catch (e) {
-      setMessage(e.message);
+      toast.error(e.message || "Unable to update the account.");
     }
   };
   return (
@@ -61,11 +63,6 @@ export default function DataPage({ type, title }) {
             : "This module is ready for data as activity is created."}
         </p>
       </div>
-      {message && (
-        <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
-          {message}
-        </div>
-      )}
       {data.length === 0 ? (
         <EmptyState
           title={

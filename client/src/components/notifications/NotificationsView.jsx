@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../UI";
 import Pagination from "../Pagination";
+import { useToast } from "../../context/ToastContext";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -25,6 +26,7 @@ const iconFor = (notification) => {
 };
 
 export default function NotificationsPage({ compact = false }) {
+  const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function NotificationsPage({ compact = false }) {
       setUnreadCount((current) => Math.max(0, current - 1));
       refreshBadge();
     } catch {
-      setError("Unable to update this notification. Please try again.");
+      toast.error("Unable to update this notification. Please try again.");
     }
   };
   const readAll = async () => {
@@ -81,7 +83,7 @@ export default function NotificationsPage({ compact = false }) {
       setUnreadCount(0);
       refreshBadge();
     } catch {
-      setError("Unable to update notifications. Please try again.");
+      toast.error("Unable to update notifications. Please try again.");
     }
   };
 

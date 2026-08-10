@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, StatusBadge } from "../../components/UI";
+import { useToast } from "../../context/ToastContext";
 
 const tabs = [
   "All Users",
@@ -16,10 +17,10 @@ const passwordRule =
   "Password must be at least 8 characters and include one uppercase letter and one number. Spaces are not allowed.";
 
 export default function UserManagement({ initialTab = "All Users" }) {
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(initialTab);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -63,7 +64,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
       const data = await api(`/admin/users/${user._id}`);
       setSelected(data.user);
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to load user details.");
       setSelected(null);
     } finally {
       setDetailLoading(false);
@@ -82,11 +83,11 @@ export default function UserManagement({ initialTab = "All Users" }) {
               method: "PUT",
               body: JSON.stringify({ accountStatus: type }),
             });
-      setMessage(data.message || "User account updated.");
+      toast.success(data.message || "User account updated.");
       setSelected(null);
       await load();
     } catch (requestError) {
-      setMessage(requestError.message);
+      toast.error(requestError.message || "Unable to update the user account.");
     }
   };
 
@@ -119,11 +120,6 @@ export default function UserManagement({ initialTab = "All Users" }) {
           Review registrations and manage Student and Faculty accounts.
         </p>
       </div>
-      {message && (
-        <div className="rounded-xl border border-maroon-200 bg-white p-4 text-sm text-maroon-800">
-          {message}
-        </div>
-      )}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {tabs.map((name) => (
           <button
@@ -270,7 +266,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
           onClose={() => setResetTarget(null)}
           onSuccess={(successMessage) => {
             setResetTarget(null);
-            setMessage(successMessage);
+            toast.success(successMessage || "Password reset successfully.");
           }}
         />
       )}
@@ -466,6 +462,7 @@ function Details({ title, values }) {
 }
 
 function ResetPassword({ user, onClose, onSuccess }) {
+  const toast = useToast();
   const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -484,7 +481,7 @@ function ResetPassword({ user, onClose, onSuccess }) {
       });
       onSuccess(data.message);
     } catch (requestError) {
-      setError(requestError.message);
+      toast.error(requestError.message || "Unable to reset the password.");
     } finally {
       setBusy(false);
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading } from "../../components/UI";
 import FacultyScheduleDetailsModal from "../../components/appointments/FacultyScheduleDetailsModal";
+import { useToast } from "../../context/ToastContext";
 
 const emptyForm = {
   date: "",
@@ -39,10 +40,16 @@ const toTimestamp = (date, time) =>
   new Date(`${date}T${time}:00`).toISOString();
 
 export default function ManageAvailability() {
+  const toast = useToast();
+  const showRequestError = (error, fallback) => {
+    const message = error?.message || fallback;
+    if (/overlap|conflict|cannot be removed|active consultation/i.test(message))
+      toast.warning(message);
+    else toast.error(message);
+  };
   const [availability, setAvailability] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
-  const [message, setMessage] = useState("");
   const [formError, setFormError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,7 +57,6 @@ export default function ManageAvailability() {
   const [scheduleDetails, setScheduleDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
-  const [detailsMessage, setDetailsMessage] = useState("");
 
   const load = async () => {
     try {
@@ -88,11 +94,11 @@ export default function ManageAvailability() {
         `/availability/${selectedScheduleId}/appointments/${appointment._id}/request-reschedule`,
         { method: "PUT", body: JSON.stringify({}) },
       );
-      setDetailsMessage(data.message);
+      toast.success(data.message);
       await Promise.all([loadScheduleDetails(selectedScheduleId), load()]);
       return true;
     } catch (requestError) {
-      setDetailsError(requestError.message || "Failed to reschedule appointment.");
+      toast.error(requestError.message || "Failed to reschedule appointment.");
       return false;
     }
   };
@@ -105,7 +111,6 @@ export default function ManageAvailability() {
 
   const save = async (event) => {
     event.preventDefault();
-    setMessage("");
     setFormError("");
     const start = new Date(`${form.date}T${form.startTime}:00`);
     const end = new Date(`${form.date}T${form.endTime}:00`);
@@ -167,9 +172,9 @@ export default function ManageAvailability() {
       );
       await load();
       resetForm();
-      setMessage(data.message);
+      toast.success(data.message);
     } catch (requestError) {
-      setFormError(requestError.message);
+      showRequestError(requestError, "Unable to save availability.");
     } finally {
       setSaving(false);
     }
@@ -195,7 +200,6 @@ export default function ManageAvailability() {
       customMeetingPlatform: knownPlatform ? "" : platform,
       meetingLink: item.meetingLink || "",
     });
-    setMessage("");
     setFormError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -206,10 +210,10 @@ export default function ManageAvailability() {
         method: "PUT",
         body: JSON.stringify({ isActive: !item.isActive }),
       });
-      setMessage(data.message);
+      toast.success(data.message);
       await load();
     } catch (requestError) {
-      setFormError(requestError.message);
+      showRequestError(requestError, "Unable to update availability.");
     }
   };
 
@@ -217,10 +221,10 @@ export default function ManageAvailability() {
     if (!window.confirm("Remove this consultation availability?")) return;
     try {
       const data = await api(`/availability/${id}`, { method: "DELETE" });
-      setMessage(data.message);
+      toast.success(data.message);
       await load();
     } catch (requestError) {
-      setFormError(requestError.message);
+      showRequestError(requestError, "Unable to remove availability.");
     }
   };
 
@@ -236,11 +240,6 @@ export default function ManageAvailability() {
         <p className="mt-2 text-sm text-slate-500">
           Publish the schedules Students can select when booking.
         </p>
-        {message && (
-          <p className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-            {message}
-          </p>
-        )}
         {formError && (
           <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {formError}
@@ -419,7 +418,6 @@ export default function ManageAvailability() {
                 onRemove={remove}
                 onOpen={(item) => {
                   setScheduleDetails(null);
-                  setDetailsMessage("");
                   void loadScheduleDetails(item._id);
                 }}
               />
@@ -432,14 +430,12 @@ export default function ManageAvailability() {
           details={scheduleDetails}
           loading={detailsLoading}
           error={detailsError}
-          actionMessage={detailsMessage}
           onRetry={() => loadScheduleDetails(selectedScheduleId)}
           onReschedule={rescheduleStudent}
           onClose={() => {
             setSelectedScheduleId("");
             setScheduleDetails(null);
             setDetailsError("");
-            setDetailsMessage("");
           }}
         />
       )}
