@@ -120,7 +120,7 @@ export default function RoleLayout({ role, navigation }) {
             </span>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-7 lg:p-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] p-4 sm:p-7 lg:p-8">
           <PageErrorBoundary key={location.pathname}>
             <Outlet />
           </PageErrorBoundary>

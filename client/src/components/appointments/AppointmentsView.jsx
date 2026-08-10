@@ -233,7 +233,7 @@ export default function AppointmentsPage({ filter }) {
     });
   }
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">
           {filter === "requests"
@@ -286,13 +286,13 @@ export default function AppointmentsPage({ filter }) {
       {user.role === "faculty" &&
         filter === "requests" &&
         availabilityCapacity.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {availabilityCapacity.map((capacity) => (
               <article
                 key={capacity.availabilityId}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <p className="font-bold text-maroon-900">
+                <p className="break-words font-bold text-maroon-900">
                   {new Date(capacity.startAt).toLocaleDateString(undefined, {
                     weekday: "long",
                     month: "long",
@@ -311,7 +311,7 @@ export default function AppointmentsPage({ filter }) {
                     minute: "2-digit",
                   })}
                 </p>
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <dl className="mt-4 grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <Capacity
                     label="Pending Requests"
                     value={capacity.pendingCount}
@@ -617,13 +617,16 @@ export default function AppointmentsPage({ filter }) {
       ) : shown.length === 0 ? (
         <EmptyState title="No current appointments" />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           {shown.map((x) => (
-            <article key={x._id} className="rounded-2xl border bg-white p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+            <article
+              key={x._id}
+              className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border bg-white p-5"
+            >
+              <div className={`flex min-w-0 flex-col gap-4 ${filter === "requests" ? "lg:flex-row lg:items-start lg:justify-between lg:gap-6" : "sm:flex-row sm:items-start sm:justify-between"}`}>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="font-bold">{x.subject}</h2>
+                    <h2 className="min-w-0 break-words font-bold">{x.subject}</h2>
                     <StatusBadge
                       status={
                         user.role === "student"
@@ -632,7 +635,7 @@ export default function AppointmentsPage({ filter }) {
                       }
                     />
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 break-words text-sm text-slate-600">
                     {user.role === "student"
                       ? `Faculty: ${x.faculty?.name}`
                       : `Student: ${x.student?.name}`}
@@ -666,20 +669,28 @@ export default function AppointmentsPage({ filter }) {
                     {x.location || "Location to be confirmed"}
                   </p>
                   {user.role === "faculty" && x.student?.program && (
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 break-words text-sm text-slate-500">
                       Program: {x.student.program}
                     </p>
                   )}
-                  <p className="mt-3 text-sm">{x.reason}</p>
-                  {x.notes && (
-                    <p className="mt-2 text-sm text-slate-600">
-                      Notes: {x.notes}
+                  <div className="mt-3 min-w-0 text-sm">
+                    <p className="font-semibold text-slate-700">Reason:</p>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-700">
+                      {x.reason}
                     </p>
+                  </div>
+                  {x.notes && (
+                    <div className="mt-3 min-w-0 text-sm">
+                      <p className="font-semibold text-slate-700">Notes:</p>
+                      <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-600">
+                        {x.notes}
+                      </p>
+                    </div>
                   )}
                   {user.role === "faculty" && x.rescheduleRequested && (
                     <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                       <p className="font-bold">Pending Reschedule Request</p>
-                      <p className="mt-1 break-words">Reason: {x.rescheduleRequestNote}</p>
+                      <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed">Reason: {x.rescheduleRequestNote}</p>
                       <p className="mt-1 text-xs text-amber-800">Requested: {new Date(x.rescheduleRequestedAt || x.updatedAt).toLocaleString()}</p>
                     </div>
                   )}
@@ -697,7 +708,7 @@ export default function AppointmentsPage({ filter }) {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "sm:w-auto sm:shrink-0"}`}>
                   <button
                     type="button"
                     onClick={() => setDetails(x)}
@@ -830,11 +841,11 @@ export default function AppointmentsPage({ filter }) {
 
 function Capacity({ label, value, wide = false }) {
   return (
-    <div className={wide ? "col-span-2" : ""}>
+    <div className={`min-w-0 ${wide ? "sm:col-span-2" : ""}`}>
       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </dt>
-      <dd className="mt-1 font-bold text-slate-800">{value}</dd>
+      <dd className="mt-1 break-words font-bold text-slate-800">{value}</dd>
     </div>
   );
 }

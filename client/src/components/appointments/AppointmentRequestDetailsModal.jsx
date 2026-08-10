@@ -63,12 +63,13 @@ export default function AppointmentRequestDetailsModal({
         </header>
 
         <div className="space-y-6 px-5 py-5 sm:px-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid min-w-0 gap-6 md:grid-cols-2">
             <DetailSection title="Student Information">
               <Detail label="Full Name" value={appointment.student?.name} />
               <Detail
                 label="Official Student Email"
                 value={appointment.student?.email}
+                breakAll
               />
               <Detail
                 label="Student ID"
@@ -111,6 +112,9 @@ export default function AppointmentRequestDetailsModal({
                 value={appointment.reason}
                 wide
               />
+              {appointment.notes && (
+                <Detail label="Notes" value={appointment.notes} wide />
+              )}
               <Detail label="Mode" value={appointment.consultationMode} />
               {appointment.consultationMode === "Face-to-Face" && (
                 <Detail label="Location" value={appointment.location} />
@@ -134,7 +138,10 @@ export default function AppointmentRequestDetailsModal({
 
           <DetailSection title="Supporting Documents">
             <div className="sm:col-span-2">
-              <SupportingDocumentViewer appointment={appointment} />
+              <SupportingDocumentViewer
+                appointment={appointment}
+                wrapFileNames
+              />
             </div>
           </DetailSection>
         </div>
@@ -151,20 +158,20 @@ export default function AppointmentRequestDetailsModal({
 
 function DetailSection({ title, children }) {
   return (
-    <section className="rounded-xl border border-slate-200 p-4">
-      <h3 className="mb-4 font-bold text-maroon-900">{title}</h3>
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 p-4">
+      <h3 className="mb-4 break-words font-bold text-maroon-900">{title}</h3>
+      <div className="grid min-w-0 gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
 
-function Detail({ label, value, wide = false }) {
+function Detail({ label, value, wide = false, breakAll = false }) {
   return (
-    <div className={wide ? "sm:col-span-2" : ""}>
+    <div className={`min-w-0 ${wide ? "sm:col-span-2" : ""}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-1 break-words text-sm text-slate-800">
+      <p className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : "break-words"}`}>
         {value || "Not available"}
       </p>
     </div>
