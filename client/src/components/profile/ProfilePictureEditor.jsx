@@ -122,7 +122,7 @@ export default function ProfilePictureEditor() {
       {(selection || removing) &&
         createPortal(
           <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) => event.target === event.currentTarget && close()}
           >
             <section
@@ -130,7 +130,7 @@ export default function ProfilePictureEditor() {
               aria-modal="true"
               aria-labelledby="profile-picture-title"
               onMouseDown={(event) => event.stopPropagation()}
-              className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+              className="max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <h2 id="profile-picture-title" className="text-xl font-bold text-maroon-900">

@@ -38,7 +38,7 @@ export default function FacultyAppointmentDetailsModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section

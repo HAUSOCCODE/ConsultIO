@@ -145,12 +145,12 @@ export default function UserManagement({ initialTab = "All Users" }) {
             {shown.map((user) => (
               <article
                 key={user._id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col items-start gap-3 min-[380px]:flex-row min-[380px]:justify-between">
                   <div className="min-w-0">
                     <p
-                      className="truncate font-bold text-slate-900"
+                      className="break-words font-bold text-slate-900"
                       title={user.name}
                     >
                       {user.name || "Unnamed user"}
@@ -176,8 +176,8 @@ export default function UserManagement({ initialTab = "All Users" }) {
               </article>
             ))}
           </div>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
-            <table className="w-full table-fixed text-left text-sm">
+          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white lg:block">
+            <table className="w-full min-w-[900px] table-fixed text-left text-sm">
               <colgroup>
                 <col className="w-[15%]" />
                 <col className="w-[23%]" />
@@ -565,11 +565,11 @@ function Modal({ title, subtitle, onClose, children, compact = false }) {
   }, []);
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl ${compact ? "max-w-lg" : "max-w-2xl"}`}
+        className={`max-h-[calc(100dvh-1.5rem)] w-full min-w-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:p-6 ${compact ? "max-w-lg" : "max-w-2xl"}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

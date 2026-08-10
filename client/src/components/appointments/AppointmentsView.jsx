@@ -434,7 +434,7 @@ export default function AppointmentsPage({ filter }) {
       {cancelTarget &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) =>
               event.target === event.currentTarget && setCancelTarget(null)
             }
@@ -444,7 +444,7 @@ export default function AppointmentsPage({ filter }) {
               aria-modal="true"
               aria-labelledby="cancel-consultation-title"
               onMouseDown={(event) => event.stopPropagation()}
-              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+              className="w-full min-w-0 max-w-md rounded-2xl bg-white p-4 shadow-2xl sm:p-6"
             >
               <h2
                 id="cancel-consultation-title"
@@ -478,7 +478,7 @@ export default function AppointmentsPage({ filter }) {
       {requestTarget &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) =>
               event.target === event.currentTarget &&
               !requestSubmitting &&
@@ -490,7 +490,7 @@ export default function AppointmentsPage({ filter }) {
               aria-modal="true"
               aria-labelledby="request-reschedule-title"
               onMouseDown={(event) => event.stopPropagation()}
-              className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+              className="max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:max-h-[92vh] sm:p-6"
             >
               <div className="flex items-start justify-between gap-4">
                 <h2 id="request-reschedule-title" className="text-xl font-bold text-maroon-900">
@@ -557,8 +557,8 @@ export default function AppointmentsPage({ filter }) {
         )}
       {reviewTarget &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" onMouseDown={(event) => event.target === event.currentTarget && !reviewSubmitting && setReviewTarget(null)}>
-            <section role="alertdialog" aria-modal="true" aria-labelledby="review-reschedule-title" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !reviewSubmitting && setReviewTarget(null)}>
+            <section role="alertdialog" aria-modal="true" aria-labelledby="review-reschedule-title" onMouseDown={(event) => event.stopPropagation()} className="w-full min-w-0 max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
               <h2 id="review-reschedule-title" className="text-xl font-bold text-maroon-900">
                 {reviewTarget.decision === "Approved" ? "Approve Reschedule Request?" : "Reject Reschedule Request?"}
               </h2>
@@ -585,12 +585,12 @@ export default function AppointmentsPage({ filter }) {
         )}
       {approvalWarning &&
         createPortal(
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-3 sm:p-4">
             <section
               role="alertdialog"
               aria-modal="true"
               aria-labelledby="capacity-warning-title"
-              className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+              className="w-full min-w-0 max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6"
             >
               <h2
                 id="capacity-warning-title"
@@ -627,8 +627,8 @@ export default function AppointmentsPage({ filter }) {
           document.body,
         )}
       {rescheduleTarget && (
-        <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/60 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/60 p-3 sm:p-4">
+          <div className="w-full min-w-0 max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6">
             <div className="flex justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold text-maroon-900">
@@ -714,9 +714,9 @@ export default function AppointmentsPage({ filter }) {
           {shown.map((x) => (
             <article
               key={x._id}
-              className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border bg-white p-5"
+              className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border bg-white p-4 sm:p-5"
             >
-              <div className={`flex min-w-0 flex-col gap-4 ${filter === "requests" ? "lg:flex-row lg:items-start lg:justify-between lg:gap-6" : "sm:flex-row sm:items-start sm:justify-between"}`}>
+              <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
                 <div className="min-w-0 flex-1">
                   {filter === "requests" && (
                     <>
@@ -846,7 +846,7 @@ export default function AppointmentsPage({ filter }) {
                     </>
                   )}
                 </div>
-                <div className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "sm:w-auto sm:shrink-0"}`}>
+                <div className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "lg:w-auto lg:shrink-0"}`}>
                   <button
                     type="button"
                     onClick={() => setDetails(x)}
@@ -1053,11 +1053,9 @@ function ConsultationHistoryTable({
 
   return (
     <>
-      <div
-        className={`hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block ${renderActions ? "overflow-x-auto" : "overflow-hidden"}`}
-      >
+      <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
         <table
-          className={`w-full table-fixed text-left text-sm ${renderActions ? "min-w-[960px]" : ""}`}
+          className={`w-full table-fixed text-left text-sm ${renderActions ? "min-w-[960px]" : "min-w-[840px]"}`}
         >
           <thead className="bg-maroon-800 text-white">
             <tr>
@@ -1158,9 +1156,9 @@ function ConsultationHistoryTable({
               key={appointment._id}
               className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col items-start gap-3 min-[380px]:flex-row min-[380px]:justify-between">
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-900">
+                  <p className="break-words font-bold text-slate-900">
                     {appointment.subject || "Consultation"}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
@@ -1176,7 +1174,7 @@ function ConsultationHistoryTable({
                   }
                 />
               </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <dl className="mt-4 grid grid-cols-1 gap-3 text-sm min-[380px]:grid-cols-2">
                 <div>
                   <dt className="text-xs font-semibold uppercase text-slate-500">
                     Date

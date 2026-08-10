@@ -217,7 +217,7 @@ export default function BookPage() {
           Select a faculty member to view their consultation availability.
         </p>
       </div>
-      <label className="relative block max-w-xl">
+      <label className="relative block w-full min-w-0 max-w-xl">
         <Search className="absolute left-4 top-3.5 text-slate-400" size={19} />
         <input
           className="field pl-11"
@@ -237,15 +237,15 @@ export default function BookPage() {
           {visibleFaculty.map((member) => (
             <article
               key={member._id}
-              className={`rounded-2xl border bg-white p-5 shadow-sm ${selected?._id === member._id ? "border-maroon-500" : "border-slate-200"}`}
+              className={`w-full min-w-0 max-w-full rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${selected?._id === member._id ? "border-maroon-500" : "border-slate-200"}`}
             >
               <div className="flex gap-4">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-maroon-800 text-xl font-bold text-white">
                   {member.name?.[0] || "F"}
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-bold text-slate-900">{member.name}</h2>
-                  <p className="text-sm text-slate-600">
+                  <h2 className="break-words font-bold text-slate-900">{member.name}</h2>
+                  <p className="break-words text-sm text-slate-600">
                     {member.department || "Department not provided"}
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
@@ -254,8 +254,8 @@ export default function BookPage() {
                 </div>
               </div>
               <div className="mt-4 space-y-1 text-sm text-slate-600">
-                <p>{member.specialization || "General consultation"}</p>
-                {member.office && <p>Office: {member.office}</p>}
+                <p className="break-words">{member.specialization || "General consultation"}</p>
+                {member.office && <p className="break-words">Office: {member.office}</p>}
                 <p>
                   Modes:{" "}
                   {member.consultationModes?.join(", ") || "Not specified"}
@@ -591,7 +591,6 @@ export default function BookPage() {
                     Supporting Documents{" "}
                     <span className="font-normal text-slate-500">
                       Optional · Up to 5 files · Maximum 4 MB total
-                      total
                     </span>
                     <input
                       className="field mt-2"
@@ -666,7 +665,7 @@ export default function BookPage() {
                   </label>
                 </div>
               </div>
-              <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-4 py-4 [&>button]:w-full sm:flex-row sm:justify-end sm:px-6 sm:[&>button]:w-auto">
                 <button
                   type="button"
                   className="btn-secondary"

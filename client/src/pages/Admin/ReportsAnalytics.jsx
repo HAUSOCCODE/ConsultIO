@@ -57,12 +57,12 @@ export default function ReportsAnalytics() {
             Generate consultation reports from live system data.
           </p>
         </div>
-        <button onClick={exportCsv} className="btn-primary">
+        <button onClick={exportCsv} className="btn-primary w-full sm:w-auto">
           Export CSV Report
         </button>
       </div>
       {items.length === 0 && <EmptyState title="No reports generated yet." />}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-2xl border bg-white p-5">
           <p className="text-sm text-slate-500">Total consultations</p>
           <strong className="mt-2 block text-3xl text-maroon-900">
@@ -85,7 +85,7 @@ export default function ReportsAnalytics() {
           </strong>
         </div>
       </div>
-      <section className="rounded-2xl border bg-white p-6">
+      <section className="rounded-2xl border bg-white p-4 sm:p-6">
         <h2 className="font-bold">AI-Assisted Report Summary</h2>
         <p className="mt-2 text-sm text-slate-500">
           AI summaries are reserved for a future configured AI service.

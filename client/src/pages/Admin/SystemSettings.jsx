@@ -32,14 +32,14 @@ export default function SystemSettings() {
   };
   return (
     <div className="grid gap-6 xl:grid-cols-2">
-      <section className="rounded-2xl border bg-white p-6">
+      <section className="min-w-0 rounded-2xl border bg-white p-4 sm:p-6">
         <h1 className="text-xl font-bold text-maroon-900">
           Account Information
         </h1>
         <dl className="mt-6 space-y-4 text-sm">
           <div>
             <dt className="text-slate-500">Username</dt>
-            <dd className="mt-1 font-semibold">{user.username}</dd>
+            <dd className="mt-1 [overflow-wrap:anywhere] font-semibold">{user.username}</dd>
           </div>
           <div>
             <dt className="text-slate-500">Role</dt>
@@ -47,7 +47,7 @@ export default function SystemSettings() {
           </div>
         </dl>
       </section>
-      <section className="rounded-2xl border bg-white p-6">
+      <section className="min-w-0 rounded-2xl border bg-white p-4 sm:p-6">
         <h2 className="text-xl font-bold text-maroon-900">Change Password</h2>
         {validationError && (
           <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">

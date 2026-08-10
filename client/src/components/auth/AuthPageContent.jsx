@@ -89,13 +89,13 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
   };
   return (
     <main className="grid min-h-screen grid-cols-1 bg-white lg:grid-cols-2">
-      <aside className="flex min-h-64 flex-col justify-between bg-[#6E1423] p-7 text-white sm:p-10 lg:min-h-screen lg:p-12">
+      <aside className="flex min-h-64 min-w-0 flex-col justify-between bg-[#6E1423] p-5 text-white sm:p-8 lg:min-h-screen lg:p-12">
         <Brand light />
         <div className="my-10 max-w-md lg:my-0">
           <p className="text-sm font-bold uppercase tracking-[.2em] text-gold-400">
             School of Computing
           </p>
-          <h1 className="mt-5 font-display text-5xl font-bold leading-tight">
+          <h1 className="mt-5 break-words font-display text-3xl font-bold leading-tight sm:text-5xl">
             Consultations made simpler.
           </h1>
           <p className="mt-5 leading-7 text-slate-100">
@@ -107,8 +107,8 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
           Holy Angel University · ConsultIO
         </p>
       </aside>
-      <section className="flex items-center justify-center bg-white px-5 py-10 sm:px-10 lg:px-12">
-        <div className="w-full max-w-xl">
+      <section className="flex min-w-0 items-center justify-center bg-white px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+        <div className="w-full min-w-0 max-w-xl">
           <Link
             to="/get-started"
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-maroon-800"
@@ -116,7 +116,7 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
             <ArrowLeft size={17} />
             Back to role selection
           </Link>
-          <h2 className="mt-8 font-display text-3xl font-bold text-maroon-900">
+          <h2 className="mt-8 break-words font-display text-2xl font-bold text-maroon-900 sm:text-3xl">
             {labels[role]} {mode === "login" ? "Login" : "Registration"}
           </h2>
           <p className="mt-2 text-sm text-slate-500">

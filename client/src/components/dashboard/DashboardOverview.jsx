@@ -59,10 +59,10 @@ export default function DashboardOverview({
   if (!data) return <Loading />;
   const recent = Array.isArray(data?.[recentKey]) ? data[recentKey] : [];
   return (
-    <div className="space-y-7">
-      <section className="rounded-2xl bg-[#72182A] p-6 text-white shadow-sm sm:p-8">
+    <div className="w-full min-w-0 space-y-7">
+      <section className="w-full min-w-0 rounded-2xl bg-[#72182A] p-5 text-white shadow-sm sm:p-8">
         <p className="eyebrow !text-gold-300">Welcome back</p>
-        <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
+        <h1 className="mt-2 break-words font-display text-2xl font-bold sm:text-4xl">
           Hello, {user.name}
         </h1>
         <p className="mt-2 text-sm text-slate-100">
@@ -71,7 +71,7 @@ export default function DashboardOverview({
         {primaryAction && (
           <Link
             to={primaryAction.to}
-            className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-gold-400 px-5 py-3 text-sm font-bold text-maroon-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-gold-300"
+            className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold-400 px-5 py-3 text-center text-sm font-bold text-maroon-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-gold-300 sm:w-auto"
           >
             {primaryAction.label}
           </Link>
@@ -84,7 +84,7 @@ export default function DashboardOverview({
             <Link
               key={key}
               to={statLinks[key] || "#"}
-              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card"
+              className="group w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card"
             >
               <div className="flex items-center justify-between">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon-50 text-maroon-800 transition group-hover:bg-maroon-800 group-hover:text-gold-300">
@@ -109,8 +109,8 @@ export default function DashboardOverview({
           ))}
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">{recentTitle}</h2>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="break-words text-lg font-bold text-slate-900">{recentTitle}</h2>
           {recentLink && (
             <Link
               className="text-sm font-bold text-maroon-800"
@@ -130,10 +130,10 @@ export default function DashboardOverview({
                 className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-maroon-200 hover:bg-maroon-50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">
+                  <p className="break-words font-semibold">
                     {item.name || item.student?.name || item.subject}
                   </p>
-                  <p className="truncate text-sm text-slate-500">
+                  <p className="[overflow-wrap:anywhere] text-sm text-slate-500">
                     {item.email || item.faculty?.name || item.student?.email}
                   </p>
                 </div>

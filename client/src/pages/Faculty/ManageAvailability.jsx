@@ -233,7 +233,7 @@ export default function ManageAvailability() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+      <section className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
         <h1 className="text-xl font-bold text-maroon-900">
           Manage Consultation Availability
         </h1>
@@ -376,10 +376,10 @@ export default function ManageAvailability() {
               </Field>
             </>
           )}
-          <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end md:col-span-2 xl:col-span-3">
             <button
               disabled={saving}
-              className="btn-primary min-w-48 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-48"
             >
               {saving
                 ? "Saving..."
@@ -463,7 +463,7 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove, onOpen }) {
           onOpen(item);
         }
       }}
-      className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-maroon-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-maroon-400"
+      className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-maroon-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-maroon-400 sm:p-5"
     >
       <p className="font-bold text-maroon-900">
         {new Date(item.startAt).toLocaleDateString(undefined, dateOptions)}

@@ -42,7 +42,7 @@ export default function RoleLayout({ role, navigation }) {
         className={`fixed inset-0 z-40 bg-slate-950/70 transition-opacity duration-200 lg:hidden ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden bg-[#6E1423] text-white shadow-2xl transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden bg-[#6E1423] text-white shadow-2xl transition-transform duration-200 lg:w-72 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-20 items-center justify-between border-b border-[#8A2436] px-6">
           <Brand light />
@@ -96,18 +96,23 @@ export default function RoleLayout({ role, navigation }) {
         </div>
       </aside>
       <div className="min-w-0 lg:pl-72">
-        <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm sm:px-7">
+        <header className="sticky top-0 z-30 flex min-h-20 items-center gap-3 border-b border-slate-200 bg-white px-3 py-3 shadow-sm sm:px-6 lg:px-7">
           <button
             onClick={() => setOpen(true)}
-            className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-maroon-800 shadow-sm lg:hidden"
+            aria-label="Open navigation"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-maroon-800 shadow-sm lg:hidden"
           >
             <Menu />
           </button>
-          <div className="hidden sm:block">
-            <p className="eyebrow">{role} workspace</p>
-            <h1 className="mt-0.5 font-bold text-slate-900">{currentPage}</h1>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-gold-600 sm:text-xs sm:tracking-[0.18em]">
+              {role} workspace
+            </p>
+            <h1 className="mt-0.5 whitespace-normal text-sm font-bold leading-5 text-slate-900 sm:text-base">
+              {currentPage}
+            </h1>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             <NavLink
               to={`/${role}/notifications`}
               className="relative grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-maroon-200 hover:bg-maroon-50 hover:text-maroon-800"
@@ -123,7 +128,7 @@ export default function RoleLayout({ role, navigation }) {
             />
           </div>
         </header>
-        <main className="mx-auto w-full min-w-0 max-w-[1600px] p-4 sm:p-7 lg:p-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] p-3 sm:p-5 md:p-7 lg:p-8">
           <PageErrorBoundary key={location.pathname}>
             <Outlet />
           </PageErrorBoundary>

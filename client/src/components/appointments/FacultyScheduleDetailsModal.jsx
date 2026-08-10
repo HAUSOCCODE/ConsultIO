@@ -47,7 +47,7 @@ export default function FacultyScheduleDetailsModal({
   const students = details?.approvedStudents || [];
   return createPortal(
     <div
-      className="fixed inset-0 z-[9998] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[9998] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
@@ -134,8 +134,8 @@ export default function FacultyScheduleDetailsModal({
             </>
           )}
         </div>
-        <footer className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
-          <button type="button" onClick={onClose} className="btn-secondary">Close</button>
+        <footer className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">Close</button>
         </footer>
       </section>
 

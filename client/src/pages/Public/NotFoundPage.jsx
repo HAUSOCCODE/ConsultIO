@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function NotFoundPage({ dashboard = "/" }) {
   return (
-    <section className="grid min-h-[55vh] place-items-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    <section className="grid min-h-[55vh] min-w-0 place-items-center rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm sm:p-8">
       <div>
         <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-gold-600">
           404

@@ -35,13 +35,13 @@ export default function GetStartedPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-[calc(100vh-5rem)] bg-[#F7F8FA] py-16">
+      <main className="min-h-[calc(100vh-5rem)] bg-[#F7F8FA] py-10 sm:py-16">
         <div className="container-page">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-widest text-gold-500">
               Get started
             </p>
-            <h1 className="mt-3 font-display text-4xl font-bold text-maroon-900">
+            <h1 className="mt-3 font-display text-3xl font-bold text-maroon-900 sm:text-4xl">
               Choose your role
             </h1>
             <p className="mt-4 text-slate-600">
@@ -49,11 +49,11 @@ export default function GetStartedPage() {
               Computing.
             </p>
           </div>
-          <div className="mx-auto mt-12 grid max-w-6xl items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto mt-8 grid max-w-6xl items-stretch gap-5 sm:mt-12 md:grid-cols-2 lg:grid-cols-3">
             {roles.map(({ name, icon: Icon, text, base, button, register }) => (
               <article
                 key={name}
-                className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-soft transition-colors duration-200 hover:border-maroon-300"
+                className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-soft transition-colors duration-200 hover:border-maroon-300 sm:p-8"
               >
                 <span className="absolute inset-x-0 top-0 h-1 bg-gold-400" />
                 <span className="grid h-14 w-14 place-items-center rounded-2xl bg-maroon-50 text-maroon-800 ring-4 ring-maroon-100 transition-colors duration-200 group-hover:bg-maroon-800 group-hover:text-gold-300">
@@ -70,7 +70,7 @@ export default function GetStartedPage() {
                 <div className="mt-8">
                   <Link
                     to={`${base}/login`}
-                    className="btn-primary h-12 w-full gap-2 px-4 text-sm"
+                    className="btn-primary h-auto min-h-12 w-full gap-2 px-4 text-sm"
                   >
                     {button}
                     <ArrowRight size={17} />

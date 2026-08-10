@@ -54,7 +54,7 @@ export default function DataPage({ type, title }) {
     }
   };
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">
@@ -74,20 +74,20 @@ export default function DataPage({ type, title }) {
       ) : (
         <div className="space-y-3">
           {data.map((x) => (
-            <article key={x._id} className="rounded-2xl border bg-white p-5">
+            <article key={x._id} className="w-full min-w-0 max-w-full rounded-2xl border bg-white p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="truncate font-bold">
+                  <p className="break-words font-bold">
                     {x.name || x.subject || x.action}
                   </p>
-                  <p className="mt-1 truncate text-sm text-slate-500">
+                  <p className="mt-1 [overflow-wrap:anywhere] text-sm text-slate-500">
                     {x.email ||
                       `${x.student?.name || ""} ${x.faculty?.name ? "→ " + x.faculty.name : ""}` ||
                       new Date(x.createdAt).toLocaleString()}
                   </p>
                   {type === "adminAppointments" && (
                     <div className="mt-2 space-y-1 text-sm text-slate-600">
-                      <p>
+                      <p className="break-words">
                         Faculty availability:{" "}
                         {x.startAt
                           ? new Date(x.startAt).toLocaleString()
@@ -100,7 +100,7 @@ export default function DataPage({ type, title }) {
                             })
                           : "End time unavailable"}
                       </p>
-                      <p>
+                      <p className="break-words">
                         Estimated duration:{" "}
                         {x.estimatedDurationMinutes
                           ? `${x.estimatedDurationMinutes} minutes`
@@ -111,7 +111,7 @@ export default function DataPage({ type, title }) {
                     </div>
                   )}
                   {type === "adminAppointments" && x.reason && (
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">
                       Reason: {x.reason}
                     </p>
                   )}
@@ -124,7 +124,7 @@ export default function DataPage({ type, title }) {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {(x.accountStatus || x.status) && (
                     <StatusBadge status={x.accountStatus || x.status} />
                   )}{" "}

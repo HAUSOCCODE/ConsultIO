@@ -45,7 +45,7 @@ export default function ConsultationOverview() {
           </div>
         ))}
       </div>
-      <div className="rounded-2xl border bg-white p-6">
+      <div className="min-w-0 rounded-2xl border bg-white p-4 sm:p-6">
         <h2 className="font-bold">Consultation Status Distribution</h2>
         <div className="mt-5 space-y-4">
           {statuses.map((status) => {
@@ -55,7 +55,7 @@ export default function ConsultationOverview() {
               : 0;
             return (
               <div key={status}>
-                <div className="mb-1 flex justify-between text-sm">
+                <div className="mb-1 flex flex-wrap justify-between gap-2 text-sm">
                   <span>{status}</span>
                   <span>
                     {count} ({width}%)

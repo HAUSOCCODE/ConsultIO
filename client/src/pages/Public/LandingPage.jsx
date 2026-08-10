@@ -68,14 +68,14 @@ export default function LandingPage() {
         >
           <div className="container-page grid items-center gap-12 lg:grid-cols-[1.1fr_.9fr]">
             <div className="relative">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold-300 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[.14em] text-maroon-800 shadow-sm">
+              <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-gold-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-[.1em] text-maroon-800 shadow-sm sm:px-4 sm:tracking-[.14em]">
                 <span className="h-2 w-2 rounded-full bg-gold-500" />
                 Holy Angel University · School of Computing
               </span>
-              <h1 className="mt-7 font-display text-5xl font-bold leading-[.92] tracking-tight text-maroon-900 sm:text-6xl lg:text-7xl">
+              <h1 className="mt-7 font-display text-4xl font-bold leading-none tracking-tight text-maroon-900 sm:text-6xl lg:text-7xl">
                 Consult<span className="text-gold-500">IO</span>
               </h1>
-              <p className="mt-5 text-xl font-semibold text-slate-700 sm:text-2xl">
+              <p className="mt-5 break-words text-lg font-semibold text-slate-700 sm:text-2xl">
                 Faculty-Student Consultation and Appointment Scheduling System
               </p>
               <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
@@ -92,8 +92,8 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-[2rem] border border-maroon-700 bg-maroon-900 p-6 text-white shadow-glow sm:p-8">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-xs uppercase tracking-widest text-gold-400">
                     Live consultation overview
                   </p>
@@ -167,13 +167,13 @@ export default function LandingPage() {
           </div>
         </section>
         <section id="about" className="bg-[#F7F8FA] py-20">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+          <div className="container-page grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-gold-600">
                 <span className="h-0.5 w-8 bg-gold-500" aria-hidden="true" />
                 About ConsultIO
               </p>
-              <h2 className="mt-5 max-w-xl font-display text-4xl font-bold leading-tight tracking-tight text-maroon-900 md:text-5xl lg:text-6xl">
+              <h2 className="mt-5 max-w-xl break-words font-display text-3xl font-bold leading-tight tracking-tight text-maroon-900 md:text-5xl lg:text-6xl">
                 Better access to meaningful academic support.
               </h2>
             </div>

@@ -296,8 +296,8 @@ function CompactNotifications({
         <NotificationEmptyState />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-            <table className="w-full table-fixed text-left text-sm">
+          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+            <table className="w-full min-w-[800px] table-fixed text-left text-sm">
               <thead className="bg-maroon-800 text-white">
                 <tr>
                   <th className="w-[14%] px-4 py-3">Type</th>
@@ -385,7 +385,7 @@ function CompactNotifications({
                   )}
                   <div className="min-w-0 flex-1">
                     <p
-                      className={`truncate ${notification.isRead ? "font-semibold" : "font-bold"}`}
+                      className={`break-words ${notification.isRead ? "font-semibold" : "font-bold"}`}
                     >
                       {notification.title || "ConsultIO Notification"}
                     </p>
@@ -398,7 +398,7 @@ function CompactNotifications({
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-4">
+                <div className="mt-4 flex flex-wrap gap-4">
                   <button
                     type="button"
                     onClick={() => open(notification)}
@@ -445,8 +445,8 @@ function CompactNotifications({
 function NotificationEmptyState() {
   return (
     <>
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-        <table className="w-full table-fixed text-left text-sm">
+      <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
+        <table className="w-full min-w-[800px] table-fixed text-left text-sm">
           <thead className="bg-maroon-800 text-white">
             <tr>
               <th className="w-[14%] px-4 py-3">Type</th>
@@ -488,7 +488,7 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
   }, [onClose]);
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
@@ -558,8 +558,8 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
             </div>
           </dl>
         </div>
-        <footer className="flex justify-end border-t border-slate-200 px-5 py-4 sm:px-6">
-          <button type="button" onClick={onClose} className="btn-secondary">
+        <footer className="flex justify-end border-t border-slate-200 px-4 py-4 sm:px-6">
+          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
             Close
           </button>
         </footer>
