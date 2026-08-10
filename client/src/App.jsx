@@ -29,6 +29,7 @@ import ConsultationOverview from "./pages/Admin/ConsultationOverview";
 import AppointmentsManagement from "./pages/Admin/AppointmentsManagement";
 import ReportsAnalytics from "./pages/Admin/ReportsAnalytics";
 import SystemSettings from "./pages/Admin/SystemSettings";
+import AdminNotifications from "./pages/Admin/AdminNotifications";
 import NotFoundPage from "./pages/Public/NotFoundPage";
 export default function App() {
   return (
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="consultations" element={<ConsultationOverview />} />
           <Route path="appointments" element={<AppointmentsManagement />} />
           <Route path="reports" element={<ReportsAnalytics />} />
+          <Route path="notifications" element={<AdminNotifications />} />
           <Route
             path="logs"
             element={<Navigate to="/admin/dashboard" replace />}

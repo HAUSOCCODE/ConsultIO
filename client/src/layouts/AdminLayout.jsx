@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   CalendarDays,
   FileBarChart,
   LayoutDashboard,
@@ -21,6 +22,7 @@ const navigation = [
     path: "/admin/appointments",
   },
   { icon: FileBarChart, label: "Reports & Analytics", path: "/admin/reports" },
+  { icon: Bell, label: "Notifications", path: "/admin/notifications" },
   { icon: Settings, label: "System Settings", path: "/admin/settings" },
 ];
 export default function AdminLayout() {
