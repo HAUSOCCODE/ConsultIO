@@ -111,9 +111,15 @@ export default function AppointmentRequestDetailsModal({
                 label="Reason for Consultation"
                 value={appointment.reason}
                 wide
+                breakAnywhere
               />
               {appointment.notes && (
-                <Detail label="Notes" value={appointment.notes} wide />
+                <Detail
+                  label="Notes"
+                  value={appointment.notes}
+                  wide
+                  breakAnywhere
+                />
               )}
               <Detail label="Mode" value={appointment.consultationMode} />
               {appointment.consultationMode === "Face-to-Face" && (
@@ -165,13 +171,19 @@ function DetailSection({ title, children }) {
   );
 }
 
-function Detail({ label, value, wide = false, breakAll = false }) {
+function Detail({
+  label,
+  value,
+  wide = false,
+  breakAll = false,
+  breakAnywhere = false,
+}) {
   return (
     <div className={`min-w-0 ${wide ? "sm:col-span-2" : ""}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : "break-words"}`}>
+      <p className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : breakAnywhere ? "[overflow-wrap:anywhere]" : "break-words"}`}>
         {value || "Not available"}
       </p>
     </div>

@@ -718,6 +718,49 @@ export default function AppointmentsPage({ filter }) {
             >
               <div className={`flex min-w-0 flex-col gap-4 ${filter === "requests" ? "lg:flex-row lg:items-start lg:justify-between lg:gap-6" : "sm:flex-row sm:items-start sm:justify-between"}`}>
                 <div className="min-w-0 flex-1">
+                  {filter === "requests" && (
+                    <>
+                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                        <h2 className="min-w-0 break-words font-bold text-slate-900">
+                          {x.student?.name || "Student name not provided"}
+                        </h2>
+                        <StatusBadge status={x.status} />
+                      </div>
+                      <dl className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
+                        <div className="min-w-0">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Date
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
+                            {new Date(x.startAt).toLocaleDateString(undefined, {
+                              weekday: "short",
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </dd>
+                        </div>
+                        <div className="min-w-0">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Time
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
+                            {new Date(x.startAt).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}{" "}
+                            –{" "}
+                            {new Date(x.endAt).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </dd>
+                        </div>
+                      </dl>
+                    </>
+                  )}
+                  {filter !== "requests" && (
+                    <>
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="min-w-0 break-words font-bold">{x.subject}</h2>
                     <StatusBadge
@@ -799,6 +842,8 @@ export default function AppointmentsPage({ filter }) {
                     <p className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
                       The scheduled consultation time has passed. Waiting for your faculty member to update the consultation status.
                     </p>
+                  )}
+                    </>
                   )}
                 </div>
                 <div className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "sm:w-auto sm:shrink-0"}`}>
