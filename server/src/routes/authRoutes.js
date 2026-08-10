@@ -5,9 +5,12 @@ import {
   login,
   me,
   register,
+  removeProfilePicture,
   updateProfile,
+  updateProfilePicture,
 } from "../controllers/authController.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, authorize } from "../middleware/auth.js";
+import { profilePictureUpload } from "../middleware/profilePictureUpload.js";
 
 const router = Router();
 const limiter = rateLimit({
@@ -20,5 +23,20 @@ router.post("/register/:role", limiter, register);
 router.post("/login/:role", limiter, login);
 router.get("/me", authenticate, me);
 router.put("/me", authenticate, updateProfile);
+router.patch(
+  "/me/profile-picture",
+  authenticate,
+  authorize("student", "faculty"),
+  limiter,
+  profilePictureUpload,
+  updateProfilePicture,
+);
+router.delete(
+  "/me/profile-picture",
+  authenticate,
+  authorize("student", "faculty"),
+  limiter,
+  removeProfilePicture,
+);
 router.put("/change-password", authenticate, limiter, changePassword);
 export default router;

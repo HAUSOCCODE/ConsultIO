@@ -33,6 +33,7 @@ const publicUser = (user) => ({
   office: user.office,
   specialization: user.specialization,
   contactNumber: user.contactNumber,
+  profilePicture: user.profilePicture,
 });
 const tokenFor = (user) =>
   jwt.sign({ sub: user.id }, env.jwtSecret, { expiresIn: "8h" });
@@ -130,7 +131,7 @@ export async function login(req, res) {
     requestedRole === "admin"
       ? { username: identifier }
       : { email: identifier },
-  ).select("+password");
+  ).select("+password +profilePicture");
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: "Invalid credentials." });
   }
@@ -158,7 +159,10 @@ export async function login(req, res) {
   res.json({ token: tokenFor(user), user: publicUser(user) });
 }
 
-export const me = (req, res) => res.json({ user: publicUser(req.user) });
+export async function me(req, res) {
+  const user = await User.findById(req.user.id).select("+profilePicture");
+  res.json({ user: publicUser(user) });
+}
 
 export async function updateProfile(req, res) {
   const allowed = [
@@ -178,8 +182,35 @@ export async function updateProfile(req, res) {
   const user = await User.findByIdAndUpdate(req.user.id, updates, {
     new: true,
     runValidators: true,
-  }).select("-password");
+  }).select("-password +profilePicture");
   res.json({ message: "Profile updated successfully.", user });
+}
+
+export async function updateProfilePicture(req, res) {
+  if (!req.file)
+    return res.status(400).json({ message: "Please select a valid image file." });
+  const profilePicture = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { profilePicture },
+    { new: true, runValidators: true },
+  ).select("+profilePicture");
+  res.json({
+    message: "Profile picture updated successfully.",
+    user: publicUser(user),
+  });
+}
+
+export async function removeProfilePicture(req, res) {
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { $unset: { profilePicture: 1 } },
+    { new: true },
+  ).select("+profilePicture");
+  res.json({
+    message: "Profile picture removed successfully.",
+    user: publicUser(user),
+  });
 }
 
 export async function changePassword(req, res) {

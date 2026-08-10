@@ -5,6 +5,7 @@ import Brand from "./Brand";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/apiClient";
 import PageErrorBoundary from "./PageErrorBoundary";
+import UserAvatar from "./profile/UserAvatar";
 
 export default function RoleLayout({ role, navigation }) {
   const { user, logout } = useAuth();
@@ -51,9 +52,10 @@ export default function RoleLayout({ role, navigation }) {
         </div>
         <div className="border-b border-[#8A2436] px-5 py-5">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gold-400 font-extrabold text-maroon-900 shadow-md">
-              {user.name?.[0]}
-            </span>
+            <UserAvatar
+              user={user}
+              className="h-11 w-11 shrink-0 rounded-xl bg-gold-400 font-extrabold text-maroon-900 shadow-md"
+            />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name}</p>
               <p className="mt-0.5 text-sm font-medium text-white">
@@ -115,9 +117,10 @@ export default function RoleLayout({ role, navigation }) {
                 <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
               )}
             </NavLink>
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon-800 font-bold text-white shadow-md ring-2 ring-maroon-100">
-              {user.name?.[0]}
-            </span>
+            <UserAvatar
+              user={user}
+              className="h-11 w-11 rounded-xl bg-maroon-800 font-bold text-white shadow-md ring-2 ring-maroon-100"
+            />
           </div>
         </header>
         <main className="mx-auto w-full min-w-0 max-w-[1600px] p-4 sm:p-7 lg:p-8">

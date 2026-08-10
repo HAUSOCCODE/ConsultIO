@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
 import { useToast } from "../../context/ToastContext";
+import ProfilePictureEditor from "./ProfilePictureEditor";
 export default function ProfilePage({ showSecurity = false }) {
   const { user, updateUser } = useAuth();
   const toast = useToast();
@@ -38,13 +39,11 @@ export default function ProfilePage({ showSecurity = false }) {
         </p>
       </div>
       <form onSubmit={save} className="panel">
-        <div className="mb-6 flex items-center gap-4">
-          <span className="grid h-20 w-20 place-items-center rounded-2xl bg-maroon-800 text-3xl font-bold text-gold-300 shadow-lg ring-4 ring-maroon-100">
-            {user.name?.[0]}
-          </span>
-          <div>
+        <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <ProfilePictureEditor />
+          <div className="min-w-0">
             <h2 className="font-bold">{user.name}</h2>
-            <p className="text-sm text-slate-500">
+            <p className="break-all text-sm text-slate-500">
               {user.email || user.username}
             </p>
           </div>

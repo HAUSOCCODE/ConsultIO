@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema(
     office: { type: String, trim: true },
     specialization: { type: String, trim: true },
     contactNumber: { type: String, trim: true },
+    profilePicture: {
+      type: String,
+      select: false,
+      maxlength: 7 * 1024 * 1024,
+    },
     registrationStatus: {
       type: String,
       enum: ["Pending", "Approved", "Rejected"],
