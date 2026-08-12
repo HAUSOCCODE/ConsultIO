@@ -64,7 +64,7 @@ export const getAvailableFaculty = async (_req, res) => {
     registrationStatus: "Approved",
     accountStatus: "Active",
   }).select(
-    "name email employeeId department specialization office designation",
+    "name email employeeId department specialization office designation +profilePicture",
   );
   const ids = faculty.map((item) => item.id);
   const availability = await Availability.find({
@@ -81,6 +81,10 @@ export const getAvailableFaculty = async (_req, res) => {
   res.json({
     faculty: faculty.map((item) => ({
       ...item.toObject(),
+      profilePicture:
+        typeof item.profilePicture === "string"
+          ? item.profilePicture
+          : item.profilePicture?.url,
       availableScheduleCount: counts[item.id],
       consultationModes: [...modes[item.id]],
     })),
@@ -127,6 +131,55 @@ export const getMyAvailability = async (req, res) =>
       .sort({ startAt: 1 }),
   });
 
+export const getAppointmentRequestSchedules = async (req, res) => {
+  const schedules = await Availability.find({ faculty: req.user.id })
+    .select("startAt endAt mode location meetingPlatform isActive")
+    .sort({ startAt: 1 })
+    .lean();
+  const totals = await Appointment.aggregate([
+    {
+      $match: {
+        faculty: new mongoose.Types.ObjectId(req.user.id),
+        availability: { $in: schedules.map((schedule) => schedule._id) },
+        status: { $in: ["Pending", "Approved", "Rejected"] },
+      },
+    },
+    {
+      $group: {
+        _id: "$availability",
+        pendingCount: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+        approvedCount: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, 1, 0] } },
+        rejectedCount: { $sum: { $cond: [{ $eq: ["$status", "Rejected"] }, 1, 0] } },
+        pendingEstimatedMinutes: {
+          $sum: { $cond: [{ $eq: ["$status", "Pending"] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+        },
+        approvedEstimatedMinutes: {
+          $sum: { $cond: [{ $eq: ["$status", "Approved"] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+        },
+        totalEstimatedMinutes: {
+          $sum: { $cond: [{ $in: ["$status", ["Pending", "Approved"]] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+        },
+      },
+    },
+  ]);
+  const bySchedule = new Map(totals.map((item) => [String(item._id), item]));
+  res.json({
+    schedules: schedules.map((schedule) => ({
+      ...schedule,
+      availabilityId: String(schedule._id),
+      capacityMinutes: Math.round((schedule.endAt - schedule.startAt) / 60000),
+      pendingCount: 0,
+      approvedCount: 0,
+      rejectedCount: 0,
+      pendingEstimatedMinutes: 0,
+      approvedEstimatedMinutes: 0,
+      totalEstimatedMinutes: 0,
+      ...bySchedule.get(String(schedule._id)),
+      _id: schedule._id,
+    })),
+  });
+};
+
 export const getAvailabilityDetails = async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id))
     return res.status(400).json({ message: "Invalid availability ID." });
@@ -136,15 +189,34 @@ export const getAvailabilityDetails = async (req, res) => {
   }).select("+meetingLink");
   if (!schedule)
     return res.status(404).json({ message: "Availability not found." });
-  const approvedStudents = await Appointment.find({
+  const appointments = await Appointment.find({
     availability: schedule.id,
     faculty: req.user.id,
-    status: { $in: ["Approved", "Rescheduled"] },
+    status: { $in: ["Pending", "Approved", "Rejected"] },
   })
-    .populate("student", "name email studentId program yearLevel")
-    .populate("supportingDocuments", "originalName mimeType size createdAt")
+    .populate("student", "name email studentId program yearLevel +profilePicture")
     .sort({ startAt: 1, createdAt: 1 });
-  res.json({ schedule, approvedStudents });
+  const safe = appointments.map((appointment) => {
+    const value = appointment.toObject();
+    if (value.student?.profilePicture && typeof value.student.profilePicture !== "string")
+      value.student.profilePicture = value.student.profilePicture.url;
+    value.supportingDocuments = (value.supportingDocuments || [])
+      .filter((document) => document?.originalName)
+      .map((document) => ({
+        _id: document._id,
+        originalName: document.originalName,
+        mimeType: document.mimeType,
+        size: document.size,
+        uploadedAt: document.uploadedAt,
+      }));
+    return value;
+  });
+  res.json({
+    schedule,
+    pendingRequests: safe.filter((appointment) => appointment.status === "Pending"),
+    approvedStudents: safe.filter((appointment) => appointment.status === "Approved"),
+    rejectedRequests: safe.filter((appointment) => appointment.status === "Rejected"),
+  });
 };
 
 export const requestFacultyReschedule = async (req, res) => {
@@ -166,9 +238,9 @@ export const requestFacultyReschedule = async (req, res) => {
   });
   if (!appointment)
     return res.status(404).json({ message: "Appointment not found for this schedule." });
-  if (!["Approved", "Rescheduled"].includes(appointment.status))
+  if (!["Pending", "Approved", "Rescheduled"].includes(appointment.status))
     return res.status(400).json({
-      message: "Only an approved or scheduled appointment can be rescheduled.",
+      message: "Only a pending, approved, or scheduled appointment can be rescheduled.",
     });
   appointment.status = "Needs Reschedule";
   appointment.responseNote = (req.body.note || "").trim();

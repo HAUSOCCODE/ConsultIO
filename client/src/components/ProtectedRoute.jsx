@@ -5,7 +5,7 @@ export default function ProtectedRoute({ role }) {
   if (loading)
     return (
       <div className="grid min-h-screen place-items-center text-maroon-800">
-        Loading ConsultIO…
+        Loading SOCConsult…
       </div>
     );
   if (!user) return <Navigate to={`/${role}/login`} replace />;

@@ -4,7 +4,7 @@ export default function Brand({ light = false }) {
       <span
         className={`text-xl font-extrabold tracking-[-.03em] ${light ? "text-white" : "text-maroon-900"}`}
       >
-        Consult<span className="text-gold-500">IO</span>
+        SOC<span className="text-gold-500">Consult</span>
       </span>
     </div>
   );

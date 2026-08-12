@@ -77,7 +77,7 @@ export function Footer() {
           <p className="font-semibold text-white">School of Computing</p>
           <p className="text-slate-100">Holy Angel University</p>
           <p className="mt-3 text-xs text-slate-200">
-            © {new Date().getFullYear()} ConsultIO. All rights reserved.
+            © {new Date().getFullYear()} SOCConsult. All rights reserved.
           </p>
         </div>
       </div>

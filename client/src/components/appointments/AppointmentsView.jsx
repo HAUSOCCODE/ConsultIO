@@ -12,10 +12,13 @@ import {
   isAwaitingFacultyUpdate,
 } from "../../utils/appointmentStatus";
 import { useToast } from "../../context/ToastContext";
+import ProfileImagePreview from "../profile/ProfileImagePreview";
+import { useNavigate } from "react-router-dom";
 const HISTORY_ITEMS_PER_PAGE = 6;
 export default function AppointmentsPage({ filter }) {
   const { user } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [appointmentTab, setAppointmentTab] = useState("Upcoming");
@@ -35,6 +38,7 @@ export default function AppointmentsPage({ filter }) {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [availabilityCapacity, setAvailabilityCapacity] = useState([]);
   const [approvalWarning, setApprovalWarning] = useState(null);
+  const [updatingIds, setUpdatingIds] = useState(() => new Set());
   const load = () =>
     api("/appointments/mine")
       .then((d) => {
@@ -51,6 +55,7 @@ export default function AppointmentsPage({ filter }) {
     return () => clearInterval(id);
   }, []);
   const update = async (id, status, extra = {}) => {
+    setUpdatingIds((current) => new Set(current).add(id));
     try {
       const d = await api(`/appointments/${id}/status`, {
         method: "PUT",
@@ -58,11 +63,22 @@ export default function AppointmentsPage({ filter }) {
       });
       if (status === "Rejected") toast.info(d.message);
       else toast.success(d.message);
-      load();
+      setItems((current) =>
+        current?.map((appointment) =>
+          appointment._id === id ? { ...appointment, status, ...d.appointment } : appointment,
+        ),
+      );
+      void load();
       return true;
     } catch (e) {
       toast.error(e.message || "Unable to update the appointment.");
       return false;
+    } finally {
+      setUpdatingIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
     }
   };
   const beginReschedule = async (appointment) => {
@@ -84,21 +100,19 @@ export default function AppointmentsPage({ filter }) {
       toast.error(requestError.message || "Unable to load schedules.");
     }
   };
-  const chooseStudentSchedule = async (appointment, availabilityId) => {
-    try {
-      const data = await api(`/appointments/${appointment._id}/reschedule`, {
-        method: "PUT",
-        body: JSON.stringify({ availabilityId }),
-      });
-      toast.success(data.message);
-      setRescheduleTarget(null);
-      load();
-      return true;
-    } catch (requestError) {
-      toast.error(requestError.message || "Unable to select the schedule.");
-      return false;
-    }
-  };
+  const chooseNewSchedule = (appointment) => navigate("/student/book", {
+    state: {
+      rescheduleAppointment: {
+        appointmentId: appointment._id,
+        facultyId: appointment.faculty?._id || appointment.faculty,
+        currentAvailabilityId: appointment.availability?._id || appointment.availability,
+        subject: appointment.subject,
+        yearLevel: appointment.yearLevel || appointment.student?.yearLevel,
+        estimatedDurationMinutes: appointment.estimatedDurationMinutes,
+        reason: appointment.reason,
+      },
+    },
+  });
   const cancel = async (id) => {
     try {
       const d = await api(`/appointments/${id}/cancel`, { method: "PUT" });
@@ -258,7 +272,7 @@ export default function AppointmentsPage({ filter }) {
       {appointment.status === "Needs Reschedule" && (
         <button
           type="button"
-          onClick={() => beginReschedule(appointment)}
+          onClick={() => chooseNewSchedule(appointment)}
           className="rounded-lg bg-maroon-800 px-3 py-2 text-xs font-bold text-white"
         >
           Choose New Schedule
@@ -312,12 +326,12 @@ export default function AppointmentsPage({ filter }) {
             ? "Review your completed, rejected, and cancelled consultation records."
             : user.role === "student" && !filter
               ? "View and manage your current consultation appointments."
-              : "Live appointment data from ConsultIO."}
+              : "Live appointment data from SOCConsult."}
         </p>
       </div>
       {user.role === "faculty" && !filter && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {["Today", "Upcoming", "Awaiting Update", "Completed", "No Show", "Cancelled"].map((name) => (
+          {["Today", "Upcoming", "Awaiting Update", "Completed", "Cancelled"].map((name) => (
             <button
               key={name}
               type="button"
@@ -626,7 +640,7 @@ export default function AppointmentsPage({ filter }) {
           </div>,
           document.body,
         )}
-      {rescheduleTarget && (
+      {rescheduleTarget && user.role === "faculty" && (
         <div className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-slate-950/60 p-3 sm:p-4">
           <div className="w-full min-w-0 max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6">
             <div className="flex justify-between gap-4">
@@ -655,18 +669,11 @@ export default function AppointmentsPage({ filter }) {
                     key={slot._id}
                     type="button"
                     onClick={async () => {
-                      if (user.role === "student")
-                        await chooseStudentSchedule(
-                          rescheduleTarget,
-                          slot.availabilityId,
-                        );
-                      else {
-                        await update(rescheduleTarget._id, "Rescheduled", {
-                          availabilityId: slot.availabilityId,
-                          startAt: slot.startAt,
-                        });
-                        setRescheduleTarget(null);
-                      }
+                      await update(rescheduleTarget._id, "Rescheduled", {
+                        availabilityId: slot.availabilityId,
+                        startAt: slot.startAt,
+                      });
+                      setRescheduleTarget(null);
                     }}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm hover:border-maroon-400"
                   >
@@ -771,11 +778,10 @@ export default function AppointmentsPage({ filter }) {
                       }
                     />
                   </div>
-                  <p className="mt-2 break-words text-sm text-slate-600">
-                    {user.role === "student"
-                      ? `Faculty: ${x.faculty?.name}`
-                      : `Student: ${x.student?.name}`}
-                  </p>
+                  <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-slate-600">
+                    <ProfileImagePreview user={user.role === "student" ? x.faculty : x.student} className="h-9 w-9 rounded-full bg-maroon-800 text-xs font-bold text-white" buttonClassName="rounded-full" />
+                    <p className="min-w-0 break-words">{user.role === "student" ? `Faculty: ${x.faculty?.name}` : `Student: ${x.student?.name}`}</p>
+                  </div>
                   <p className="mt-1 text-sm text-slate-500">
                     {new Date(x.startAt).toLocaleDateString(undefined, {
                       weekday: "short",
@@ -857,19 +863,21 @@ export default function AppointmentsPage({ filter }) {
                   {user.role === "faculty" && x.status === "Pending" && (
                     <>
                       <button
+                        disabled={updatingIds.has(x._id)}
                         onClick={() => approve(x)}
-                        className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white"
+                        className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
                       >
                         Approve
                       </button>
                       <button
+                        disabled={updatingIds.has(x._id)}
                         onClick={() =>
                           update(x._id, "Rejected", {
                             note:
                               window.prompt("Optional rejection reason:") || "",
                           })
                         }
-                        className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white"
+                        className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
                       >
                         Reject
                       </button>
@@ -886,20 +894,13 @@ export default function AppointmentsPage({ filter }) {
                     ["Approved", "Rescheduled"].includes(x.status) && (
                       <>
                         <button
+                          disabled={updatingIds.has(x._id)}
                           onClick={() => update(x._id, "Completed")}
-                          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white"
+                          className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
                         >
-                          Complete
+                          {updatingIds.has(x._id) ? "Completing..." : "Complete"}
                         </button>
                         {new Date(x.endAt) < new Date() && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => update(x._id, "No Show")}
-                              className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700"
-                            >
-                              Mark No Show
-                            </button>
                             <button
                               type="button"
                               onClick={() => beginReschedule(x)}
@@ -907,7 +908,6 @@ export default function AppointmentsPage({ filter }) {
                             >
                               Reschedule
                             </button>
-                          </>
                         )}
                       </>
                     )}
@@ -915,7 +915,7 @@ export default function AppointmentsPage({ filter }) {
                     x.status === "Needs Reschedule" && (
                       <button
                         type="button"
-                        onClick={() => beginReschedule(x)}
+                        onClick={() => chooseNewSchedule(x)}
                         className="btn-primary"
                       >
                         Choose New Schedule

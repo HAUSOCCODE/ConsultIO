@@ -11,7 +11,7 @@ export default function NotFoundPage({ dashboard = "/" }) {
           Page not found
         </h1>
         <p className="mt-3 text-slate-600">
-          The requested ConsultIO page does not exist.
+          The requested SOCConsult page does not exist.
         </p>
         <Link to={dashboard} className="btn-primary mt-6">
           Back to Dashboard

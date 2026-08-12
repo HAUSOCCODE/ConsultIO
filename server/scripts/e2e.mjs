@@ -169,7 +169,7 @@ try {
     check(
       pendingLogin.status === 403 &&
         pendingLogin.data.message ===
-          "Your account has already been created. Please wait for an administrator to approve your registration before you can access ConsultIO. You do not need to register again.",
+          "Your account has already been created. Please wait for an administrator to approve your registration before you can access SOCConsult. You do not need to register again.",
       `${test.role} pending login is denied with exact message`,
     );
     const duplicate = await request(`/auth/register/${test.role}`, {

@@ -153,7 +153,7 @@ export async function login(req, res) {
   if (user.role !== "admin" && user.registrationStatus === "Pending")
     return res.status(403).json({
       message:
-        "Your account has already been created. Please wait for an administrator to approve your registration before you can access ConsultIO. You do not need to register again.",
+        "Your account has already been created. Please wait for an administrator to approve your registration before you can access SOCConsult. You do not need to register again.",
     });
   if (user.role !== "admin" && user.registrationStatus === "Rejected")
     return res.status(403).json({
@@ -193,7 +193,7 @@ export async function updateProfile(req, res) {
     new: true,
     runValidators: true,
   }).select("-password +profilePicture");
-  res.json({ message: "Profile updated successfully.", user });
+  res.json({ message: "Profile updated successfully.", user: publicUser(user) });
 }
 
 export async function updateProfilePicture(req, res) {
@@ -286,7 +286,7 @@ export async function ensureAdmin() {
   const existing = await User.findOne({ role: "admin" });
   if (existing) return;
   await User.create({
-    name: "ConsultIO Administrator",
+    name: "SOCConsult Administrator",
     username: env.adminUsername,
     password: await bcrypt.hash(env.adminPassword, 12),
     role: "admin",

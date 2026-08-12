@@ -7,6 +7,7 @@ import {
   getFacultyAvailability,
   getAvailabilityDetails,
   getMyAvailability,
+  getAppointmentRequestSchedules,
   requestFacultyReschedule,
   updateAvailability,
 } from "../controllers/availabilityController.js";
@@ -20,6 +21,12 @@ router.get(
   getFacultyAvailability,
 );
 router.get("/mine", authenticate, authorize("faculty"), getMyAvailability);
+router.get(
+  "/request-schedules",
+  authenticate,
+  authorize("faculty"),
+  getAppointmentRequestSchedules,
+);
 router.get(
   "/:id/details",
   authenticate,

@@ -41,9 +41,8 @@ const appointmentSchema = new mongoose.Schema(
       size: { type: Number, min: 0 },
       data: { type: String, select: false },
     },
-    supportingDocuments: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "SupportingDocument" },
-    ],
+    // Legacy entries can be ObjectIds. New uploads are embedded Cloudinary metadata.
+    supportingDocuments: [mongoose.Schema.Types.Mixed],
     status: {
       type: String,
       enum: [
@@ -78,5 +77,6 @@ const appointmentSchema = new mongoose.Schema(
 );
 
 appointmentSchema.index({ faculty: 1, startAt: 1, status: 1 });
+appointmentSchema.index({ faculty: 1, availability: 1, status: 1 });
 appointmentSchema.index({ student: 1, startAt: 1, status: 1 });
 export default mongoose.model("Appointment", appointmentSchema);

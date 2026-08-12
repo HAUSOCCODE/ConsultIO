@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
 import { useToast } from "../../context/ToastContext";
 import ProfilePictureEditor from "./ProfilePictureEditor";
-export default function ProfilePage({ showSecurity = false }) {
+export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const toast = useToast();
   const [form, setForm] = useState({
@@ -35,7 +35,7 @@ export default function ProfilePage({ showSecurity = false }) {
         <p className="eyebrow">Account</p>
         <h1 className="page-title mt-1">My Profile</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Manage your ConsultIO account information.
+          Manage your SOCConsult account information.
         </p>
       </div>
       <form onSubmit={save} className="panel">
@@ -93,12 +93,11 @@ export default function ProfilePage({ showSecurity = false }) {
         </div>
         <button className="btn-primary mt-6">Save Profile</button>
       </form>
-      {showSecurity && <SecuritySettings />}
     </div>
   );
 }
 
-function SecuritySettings() {
+export function SecuritySettings() {
   const toast = useToast();
   const empty = { currentPassword: "", newPassword: "", confirmPassword: "" };
   const [passwords, setPasswords] = useState(empty);
@@ -124,7 +123,15 @@ function SecuritySettings() {
     event.preventDefault();
     setValidationError("");
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setValidationError("New password and confirmation do not match.");
+      setValidationError("New passwords do not match.");
+      return;
+    }
+    if (/\s/.test(passwords.newPassword)) {
+      setValidationError("Password cannot contain spaces.");
+      return;
+    }
+    if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(passwords.newPassword)) {
+      setValidationError("Password must be at least 8 characters and include one uppercase letter and one number.");
       return;
     }
     if (passwords.currentPassword === passwords.newPassword) {

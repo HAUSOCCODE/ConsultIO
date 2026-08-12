@@ -38,8 +38,8 @@ export default function NotificationsPage({ compact = false }) {
   const [confirmation, setConfirmation] = useState(null);
   const [mutating, setMutating] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const load = (background = false) => {
+    if (!background) setLoading(true);
     setError("");
     return api("/notifications")
       .then((data) => {
@@ -49,10 +49,17 @@ export default function NotificationsPage({ compact = false }) {
         setUnreadCount(Number(data?.unreadCount) || 0);
       })
       .catch(() => setError("Unable to load notifications. Please try again."))
-      .finally(() => setLoading(false));
+      .finally(() => !background && setLoading(false));
   };
   useEffect(() => {
     void load();
+    const refresh = () => void load(true);
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
   const refreshBadge = () =>
@@ -220,7 +227,7 @@ export default function NotificationsPage({ compact = false }) {
                       <h2
                         className={`${notification.isRead ? "font-semibold" : "font-bold"} text-slate-900`}
                       >
-                        {notification.title || "ConsultIO Notification"}
+                        {notification.title || "SOCConsult Notification"}
                       </h2>
                       {!notification.isRead && (
                         <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-gold-500" />
@@ -228,7 +235,7 @@ export default function NotificationsPage({ compact = false }) {
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       {notification.message ||
-                        "A ConsultIO activity was updated."}
+                        "A SOCConsult activity was updated."}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
                       {Number.isNaN(createdAt.getTime())
@@ -399,7 +406,7 @@ function CompactNotifications({
                           className={`truncate ${notification.isRead ? "font-medium" : "font-bold"}`}
                           title={notification.title}
                         >
-                          {notification.title || "ConsultIO Notification"}
+                          {notification.title || "SOCConsult Notification"}
                         </p>
                       </div>
                     </td>
@@ -468,7 +475,7 @@ function CompactNotifications({
                     <p
                       className={`break-words ${notification.isRead ? "font-semibold" : "font-bold"}`}
                     >
-                      {notification.title || "ConsultIO Notification"}
+                      {notification.title || "SOCConsult Notification"}
                     </p>
                     <p className="mt-1 text-xs font-semibold uppercase text-maroon-700">
                       {typeLabel(notification)} ·{" "}
@@ -735,7 +742,7 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
                 Title
               </dt>
               <dd className="mt-1 text-sm font-semibold text-slate-800">
-                {notification.title || "ConsultIO Notification"}
+                {notification.title || "SOCConsult Notification"}
               </dd>
             </div>
           </dl>
@@ -744,7 +751,7 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
               Full Message
             </p>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">
-              {notification.message || "A ConsultIO activity was updated."}
+              {notification.message || "A SOCConsult activity was updated."}
             </p>
           </div>
           <dl className="grid gap-4 sm:grid-cols-2">

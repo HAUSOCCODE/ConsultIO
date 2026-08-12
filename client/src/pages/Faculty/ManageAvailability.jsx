@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading } from "../../components/UI";
-import FacultyScheduleDetailsModal from "../../components/appointments/FacultyScheduleDetailsModal";
 import { useToast } from "../../context/ToastContext";
 
 const emptyForm = {
@@ -53,10 +52,6 @@ export default function ManageAvailability() {
   const [formError, setFormError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState("");
-  const [scheduleDetails, setScheduleDetails] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [detailsError, setDetailsError] = useState("");
 
   const load = async () => {
     try {
@@ -73,35 +68,6 @@ export default function ManageAvailability() {
   useEffect(() => {
     void load();
   }, []);
-
-  const loadScheduleDetails = async (id) => {
-    setSelectedScheduleId(id);
-    setDetailsLoading(true);
-    setDetailsError("");
-    try {
-      const data = await api(`/availability/${id}/details`);
-      setScheduleDetails(data);
-    } catch (requestError) {
-      setDetailsError(requestError.message || "Failed to load schedule.");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const rescheduleStudent = async (appointment) => {
-    try {
-      const data = await api(
-        `/availability/${selectedScheduleId}/appointments/${appointment._id}/request-reschedule`,
-        { method: "PUT", body: JSON.stringify({}) },
-      );
-      toast.success(data.message);
-      await Promise.all([loadScheduleDetails(selectedScheduleId), load()]);
-      return true;
-    } catch (requestError) {
-      toast.error(requestError.message || "Failed to reschedule appointment.");
-      return false;
-    }
-  };
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -416,34 +382,16 @@ export default function ManageAvailability() {
                 onEdit={edit}
                 onToggle={toggle}
                 onRemove={remove}
-                onOpen={(item) => {
-                  setScheduleDetails(null);
-                  void loadScheduleDetails(item._id);
-                }}
               />
             ))}
           </div>
         )}
       </section>
-      {selectedScheduleId && (
-        <FacultyScheduleDetailsModal
-          details={scheduleDetails}
-          loading={detailsLoading}
-          error={detailsError}
-          onRetry={() => loadScheduleDetails(selectedScheduleId)}
-          onReschedule={rescheduleStudent}
-          onClose={() => {
-            setSelectedScheduleId("");
-            setScheduleDetails(null);
-            setDetailsError("");
-          }}
-        />
-      )}
     </div>
   );
 }
 
-function ScheduleCard({ item, onEdit, onToggle, onRemove, onOpen }) {
+function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
   const dateOptions = {
     weekday: "long",
     year: "numeric",
@@ -452,19 +400,7 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove, onOpen }) {
   };
   const timeOptions = { hour: "numeric", minute: "2-digit" };
   return (
-    <article
-      role="button"
-      tabIndex={0}
-      aria-label="Open schedule details"
-      onClick={() => onOpen(item)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen(item);
-        }
-      }}
-      className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-maroon-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-maroon-400 sm:p-5"
-    >
+    <article className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <p className="font-bold text-maroon-900">
         {new Date(item.startAt).toLocaleDateString(undefined, dateOptions)}
       </p>
@@ -487,21 +423,21 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove, onOpen }) {
       <div className="mt-4 flex flex-wrap gap-4">
         <button
           type="button"
-          onClick={(event) => { event.stopPropagation(); onEdit(item); }}
+          onClick={() => onEdit(item)}
           className="text-sm font-bold text-blue-700"
         >
           Edit
         </button>
         <button
           type="button"
-          onClick={(event) => { event.stopPropagation(); onToggle(item); }}
+          onClick={() => onToggle(item)}
           className="text-sm font-bold text-maroon-800"
         >
           {item.isActive ? "Deactivate" : "Activate"}
         </button>
         <button
           type="button"
-          onClick={(event) => { event.stopPropagation(); onRemove(item._id); }}
+          onClick={() => onRemove(item._id)}
           className="text-sm font-bold text-red-700"
         >
           Remove

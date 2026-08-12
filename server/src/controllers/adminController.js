@@ -4,6 +4,13 @@ import Appointment from "../models/Appointment.js";
 import { logActivity, notify } from "../services/activityService.js";
 
 const managedRoles = ["student", "faculty"];
+const withProfileUrl = (user) => ({
+  ...user,
+  profilePicture:
+    typeof user.profilePicture === "string"
+      ? user.profilePicture
+      : user.profilePicture?.url,
+});
 
 export async function getRegistrations(req, res) {
   const registrations = await User.find({
@@ -53,7 +60,7 @@ export async function approveRegistration(req, res) {
       user.id,
       "registration",
       "Registration approved",
-      "Your ConsultIO account has been approved. You may now log in.",
+      "Your SOCConsult account has been approved. You may now log in.",
       user.id,
     ),
   ]);
@@ -101,19 +108,21 @@ export async function rejectRegistration(req, res) {
   res.json({ message: "Registration rejected.", registration: user });
 }
 export async function getUsers(_req, res) {
+  const users = await User.find({ role: { $ne: "admin" } })
+    .select("-password +profilePicture")
+    .sort({ createdAt: -1 })
+    .lean();
   res.json({
-    users: await User.find({ role: { $ne: "admin" } })
-      .select("-password")
-      .sort({ createdAt: -1 }),
+    users: users.map(withProfileUrl),
   });
 }
 export async function getUser(req, res) {
   const user = await User.findOne({
     _id: req.params.id,
     role: { $in: managedRoles },
-  }).select("-password");
+  }).select("-password +profilePicture").lean();
   if (!user) return res.status(404).json({ message: "User not found." });
-  res.json({ user });
+  res.json({ user: withProfileUrl(user) });
 }
 export async function resetUserPassword(req, res) {
   const newPassword = req.body.newPassword || "";

@@ -26,7 +26,7 @@ const roles = [
   {
     name: "Administrator",
     icon: ShieldCheck,
-    text: "Monitor consultation activities, manage accounts, review reports, and administer the ConsultIO system.",
+    text: "Monitor consultation activities, manage accounts, review reports, and administer the SOCConsult system.",
     base: "/admin",
     button: "Continue as Administrator",
   },

@@ -22,6 +22,40 @@ const documentSize = (data = "") => {
 };
 
 const looksLikeUrl = (value = "") => /^https?:\/\//i.test(value);
+const normalizeProfilePicture = (person) => {
+  if (!person || typeof person !== "object") return;
+  if (person.profilePicture && typeof person.profilePicture !== "string")
+    person.profilePicture = person.profilePicture.url;
+};
+const publicDocumentMetadata = (document) => ({
+  _id: document._id,
+  originalName: document.originalName,
+  mimeType: document.mimeType,
+  size: document.size,
+  uploadedAt: document.uploadedAt || document.createdAt,
+});
+const hydrateLegacyDocuments = async (appointments) => {
+  const legacyIds = appointments.flatMap((appointment) =>
+    (appointment.supportingDocuments || []).filter(
+      (entry) => mongoose.isValidObjectId(entry) && !entry?.originalName,
+    ),
+  );
+  if (!legacyIds.length) return appointments;
+  const legacy = await SupportingDocument.find({ _id: { $in: legacyIds } })
+    .select("originalName mimeType size createdAt")
+    .lean();
+  const byId = new Map(legacy.map((document) => [String(document._id), document]));
+  appointments.forEach((appointment) => {
+    appointment.supportingDocuments = (appointment.supportingDocuments || [])
+      .map((entry) =>
+        typeof entry === "object" && entry.originalName
+          ? publicDocumentMetadata(entry)
+          : byId.get(String(entry)),
+      )
+      .filter(Boolean);
+  });
+  return appointments;
+};
 const safeOriginalName = (value = "") =>
   path.basename(value.replaceAll("\\", "/")).slice(0, 255) || "document";
 const cloudinaryResourceType = (mimeType = "") =>
@@ -76,19 +110,21 @@ router.get("/mine", authorize("student", "faculty"), async (req, res) => {
       ? { student: req.user.id }
       : { faculty: req.user.id };
   const appointments = await Appointment.find(query)
-    .populate("student", "name email studentId program yearLevel")
+    .populate("student", "name email studentId program yearLevel +profilePicture")
     .populate(
       "faculty",
-      "name email department specialization office designation",
+      "name email department specialization office designation +profilePicture",
     )
-    .populate("supportingDocuments", "originalName mimeType size createdAt")
     .populate(
       "availability",
       "startAt endAt mode location meetingPlatform +meetingLink",
     )
     .sort({ startAt: -1 })
     .lean();
+  await hydrateLegacyDocuments(appointments);
   const safeAppointments = appointments.map((appointment) => {
+    normalizeProfilePicture(appointment.student);
+    normalizeProfilePicture(appointment.faculty);
     const availability = appointment.availability;
     if (
       appointment.consultationMode === "Online" ||
@@ -195,7 +231,7 @@ router.post(
           const originalName = safeOriginalName(file.originalname);
           const extension = path.extname(originalName).toLowerCase();
           const uploaded = await uploadBuffer(file.buffer, {
-            folder: "consultio/consultation-documents",
+            folder: `consultio/consultation-documents/${appointment.id}`,
             resource_type: resourceType,
             public_id: `${crypto.randomUUID()}${resourceType === "raw" ? extension : ""}`,
           });
@@ -207,22 +243,17 @@ router.post(
             resourceType: uploaded.resource_type,
           });
         }
-        const documents = await SupportingDocument.insertMany(
-          uploadedAssets.map(
-            ({ file, originalName, url, publicId, resourceType }) => ({
-              appointment: appointment.id,
-              uploadedBy: req.user.id,
-              originalName,
-              mimeType: file.mimetype,
-              size: file.size,
-              url,
-              publicId,
-              resourceType,
-            }),
-          ),
-        );
-        appointment.supportingDocuments = documents.map(
-          (document) => document.id,
+        appointment.supportingDocuments = uploadedAssets.map(
+          ({ file, originalName, url, publicId, resourceType }) => ({
+            _id: new mongoose.Types.ObjectId(),
+            originalName,
+            cloudinaryUrl: url,
+            cloudinaryPublicId: publicId,
+            resourceType,
+            mimeType: file.mimetype,
+            size: file.size,
+            uploadedAt: new Date(),
+          }),
         );
         await appointment.save();
       }
@@ -231,7 +262,6 @@ router.post(
         ...uploadedAssets.map((asset) =>
           destroyAsset(asset).catch(() => {}),
         ),
-        SupportingDocument.deleteMany({ appointment: appointment.id }),
         Appointment.deleteOne({ _id: appointment.id }),
       ]);
       throw documentError;
@@ -282,37 +312,92 @@ router.get(
       return res
         .status(403)
         .json({ message: "Unauthorized for this document." });
-    if (
-      !appointment.supportingDocuments.some(
-        (id) => String(id) === req.params.documentId,
-      )
-    )
+    const entry = appointment.supportingDocuments.find(
+      (document) => String(document?._id || document) === req.params.documentId,
+    );
+    if (!entry)
       return res
         .status(404)
         .json({ message: "Supporting document not found." });
-    const document = await SupportingDocument.findOne({
-      _id: req.params.documentId,
-      appointment: appointment.id,
-    }).select("+data +publicId +resourceType");
+    const embedded = entry && typeof entry === "object" && entry.cloudinaryUrl;
+    const document = embedded
+      ? entry
+      : await SupportingDocument.findOne({
+          _id: req.params.documentId,
+          appointment: appointment.id,
+        }).select("+data +publicId +resourceType");
     if (!document)
       return res
         .status(404)
         .json({ message: "Supporting document not found." });
-    if (!document.url && !document.data)
+    const url = document.cloudinaryUrl || document.url;
+    if (!url && !document.data)
       return res
         .status(404)
         .json({ message: "Supporting document file is unavailable." });
+    if (url) {
+      try {
+        const check = await fetch(url, { method: "HEAD" });
+        if (check.status === 404) {
+          if (embedded) {
+            appointment.supportingDocuments = appointment.supportingDocuments.filter(
+              (item) => String(item?._id || item) !== req.params.documentId,
+            );
+            await appointment.save();
+          }
+          return res.status(404).json({ message: "Document is no longer available." });
+        }
+      } catch {
+        // A transient Cloudinary/network failure must not remove valid metadata.
+      }
+    }
     res.json({
       supportingDocument: {
         _id: document.id,
         name: document.originalName,
         mimeType: document.mimeType,
         size: document.size,
-        data: document.url
-          ? document.url
+        data: url
+          ? url
           : `data:${document.mimeType};base64,${document.data.toString("base64")}`,
       },
     });
+  },
+);
+router.delete(
+  "/:id/documents/:documentId",
+  authorize("student", "faculty", "admin"),
+  async (req, res) => {
+    const appointment = await Appointment.findById(req.params.id).select(
+      "student faculty supportingDocuments",
+    );
+    if (!appointment) return res.status(404).json({ message: "Appointment not found." });
+    const allowed =
+      req.user.role === "admin" ||
+      String(appointment.student) === req.user.id ||
+      String(appointment.faculty) === req.user.id;
+    if (!allowed) return res.status(403).json({ message: "Unauthorized for this document." });
+    const entry = appointment.supportingDocuments.find(
+      (document) => String(document?._id || document) === req.params.documentId,
+    );
+    if (!entry) return res.status(404).json({ message: "Supporting document not found." });
+    if (entry?.cloudinaryPublicId) {
+      await destroyAsset({
+        publicId: entry.cloudinaryPublicId,
+        resourceType: entry.resourceType,
+      }).catch(() => {});
+    } else {
+      const legacy = await SupportingDocument.findById(req.params.documentId)
+        .select("+publicId +resourceType");
+      if (legacy?.publicId)
+        await destroyAsset({ publicId: legacy.publicId, resourceType: legacy.resourceType }).catch(() => {});
+      await SupportingDocument.deleteOne({ _id: req.params.documentId, appointment: appointment.id });
+    }
+    appointment.supportingDocuments = appointment.supportingDocuments.filter(
+      (document) => String(document?._id || document) !== req.params.documentId,
+    );
+    await appointment.save();
+    res.json({ message: "Supporting document removed." });
   },
 );
 router.get(
@@ -344,7 +429,7 @@ router.get(
 router.put("/:id/status", authorize("faculty"), async (req, res) => {
   const status = req.body.status;
   if (
-    !["Approved", "Rejected", "Completed", "No Show", "Rescheduled"].includes(
+    !["Approved", "Rejected", "Completed", "Rescheduled"].includes(
       status,
     )
   )
@@ -359,14 +444,6 @@ router.put("/:id/status", authorize("faculty"), async (req, res) => {
     return res
       .status(409)
       .json({ message: "This appointment can no longer be updated." });
-  if (
-    status === "No Show" &&
-    (!["Approved", "Rescheduled"].includes(appointment.status) ||
-      appointment.endAt >= new Date())
-  )
-    return res.status(400).json({
-      message: "Only a past approved consultation can be marked No Show.",
-    });
   if (status === "Rescheduled") {
     const slot = await Availability.findOne({
       _id: req.body.availabilityId,

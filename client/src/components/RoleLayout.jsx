@@ -5,7 +5,7 @@ import Brand from "./Brand";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/apiClient";
 import PageErrorBoundary from "./PageErrorBoundary";
-import UserAvatar from "./profile/UserAvatar";
+import ProfileImagePreview from "./profile/ProfileImagePreview";
 
 export default function RoleLayout({ role, navigation }) {
   const { user, logout } = useAuth();
@@ -24,10 +24,12 @@ export default function RoleLayout({ role, navigation }) {
         .catch(() => {});
     load();
     window.addEventListener("notifications:updated", load);
-    const timer = setInterval(load, 30000);
+    window.addEventListener("focus", load);
+    const timer = setInterval(load, 15000);
     return () => {
       clearInterval(timer);
       window.removeEventListener("notifications:updated", load);
+      window.removeEventListener("focus", load);
     };
   }, []);
   const signOut = () => {
@@ -52,7 +54,7 @@ export default function RoleLayout({ role, navigation }) {
         </div>
         <div className="border-b border-[#8A2436] px-5 py-5">
           <div className="flex items-center gap-3">
-            <UserAvatar
+            <ProfileImagePreview
               user={user}
               className="h-11 w-11 shrink-0 rounded-xl bg-gold-400 font-extrabold text-maroon-900 shadow-md"
             />
@@ -122,7 +124,7 @@ export default function RoleLayout({ role, navigation }) {
                 <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
               )}
             </NavLink>
-            <UserAvatar
+            <ProfileImagePreview
               user={user}
               className="h-11 w-11 rounded-xl bg-maroon-800 font-bold text-white shadow-md ring-2 ring-maroon-100"
             />

@@ -1,4 +1,4 @@
-# ConsultIO
+# SOCConsult
 
 MERN-based faculty-student consultation and appointment scheduling system.
 

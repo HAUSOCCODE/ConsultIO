@@ -65,6 +65,8 @@ const socialPages = [
     href: "https://www.facebook.com/haucictofficial",
   },
 ];
+const socialButtonClass =
+  "btn-secondary min-h-[42px] w-auto shrink-0 gap-1.5 whitespace-nowrap !px-2 !py-2 !text-sm !font-semibold min-[360px]:!px-4";
 export default function LandingPage() {
   const [stats, setStats] = useState(null);
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function LandingPage() {
                 Holy Angel University · School of Computing
               </span>
               <h1 className="mt-7 font-display text-4xl font-bold leading-none tracking-tight text-maroon-900 sm:text-6xl lg:text-7xl">
-                Consult<span className="text-gold-500">IO</span>
+                SOC<span className="text-gold-500">Consult</span>
               </h1>
               <p className="mt-5 break-words text-lg font-semibold text-slate-700 sm:text-2xl">
                 Faculty-Student Consultation and Appointment Scheduling System
@@ -192,14 +194,14 @@ export default function LandingPage() {
             <div>
               <p className="flex items-center gap-3 text-sm font-bold uppercase tracking-[0.2em] text-gold-600">
                 <span className="h-0.5 w-8 bg-gold-500" aria-hidden="true" />
-                About ConsultIO
+                About SOCConsult
               </p>
               <h2 className="mt-5 max-w-xl break-words font-display text-3xl font-bold leading-tight tracking-tight text-maroon-900 md:text-5xl lg:text-6xl">
                 Better access to meaningful academic support.
               </h2>
             </div>
             <p className="max-w-2xl text-base leading-relaxed text-slate-700 md:text-lg md:leading-8">
-              ConsultIO serves the School of Computing of Holy Angel University
+              SOCConsult serves the School of Computing of Holy Angel University
               by bringing consultation scheduling, faculty availability,
               appointment monitoring, notifications, consultation records, and
               follow-up activities into one secure workspace.
@@ -247,28 +249,33 @@ export default function LandingPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap">
+                  <div
+                    className={`mt-auto pt-6 ${page.instagramHref ? "flex flex-row flex-nowrap items-center gap-2.5" : ""}`}
+                  >
                     <a
                       href={page.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-secondary w-full gap-2 whitespace-normal sm:w-auto"
+                      className={socialButtonClass}
                       aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
                     >
-                      Visit Facebook Page
-                      <ExternalLink size={17} aria-hidden="true" />
+                      {page.instagramHref ? "Facebook" : "Visit Facebook Page"}
+                      <ExternalLink
+                        size={16}
+                        aria-hidden="true"
+                      />
                     </a>
                     {page.instagramHref && (
                       <a
                         href={page.instagramHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-secondary w-full gap-2 whitespace-normal sm:w-auto"
+                        className={socialButtonClass}
                         aria-label={`Visit ${page.title} on Instagram (opens in a new tab)`}
                       >
-                        <Instagram size={17} aria-hidden="true" />
-                        Visit Instagram Page
-                        <ExternalLink size={17} aria-hidden="true" />
+                        <Instagram size={16} aria-hidden="true" />
+                        Instagram
+                        <ExternalLink size={16} aria-hidden="true" />
                       </a>
                     )}
                   </div>

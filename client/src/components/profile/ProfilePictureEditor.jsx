@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
-import UserAvatar from "./UserAvatar";
+import ProfileImagePreview from "./ProfileImagePreview";
 
 const MAX_SIZE = 4 * 1024 * 1024;
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -84,17 +84,10 @@ export default function ProfilePictureEditor() {
   return (
     <>
       <div className="flex shrink-0 flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          aria-label="Change profile picture"
-          className="rounded-2xl focus:outline-none focus:ring-4 focus:ring-maroon-100"
-        >
-          <UserAvatar
-            user={user}
-            className="h-20 w-20 rounded-2xl bg-maroon-800 text-3xl font-bold text-gold-300 shadow-lg ring-4 ring-maroon-100"
-          />
-        </button>
+        <ProfileImagePreview
+          user={user}
+          className="h-20 w-20 rounded-2xl bg-maroon-800 text-3xl font-bold text-gold-300 shadow-lg ring-4 ring-maroon-100"
+        />
         <button
           type="button"
           onClick={() => inputRef.current?.click()}

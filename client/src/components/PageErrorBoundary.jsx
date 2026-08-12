@@ -8,7 +8,7 @@ export default class PageErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    console.error("ConsultIO page render failed:", error);
+    console.error("SOCConsult page render failed:", error);
   }
 
   render() {

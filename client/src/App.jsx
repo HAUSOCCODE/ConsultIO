@@ -14,6 +14,7 @@ import StudentAppointments from "./pages/Student/StudentAppointments";
 import StudentHistory from "./pages/Student/StudentConsultationHistory";
 import StudentNotifications from "./pages/Student/StudentNotifications";
 import StudentProfile from "./pages/Student/StudentProfile";
+import StudentSecuritySettings from "./pages/Student/StudentSecuritySettings";
 import FacultyLayout from "./layouts/FacultyLayout";
 import FacultyDashboard from "./pages/Faculty/FacultyDashboard";
 import FacultyAppointments from "./pages/Faculty/FacultyAppointments";
@@ -22,6 +23,7 @@ import FacultyHistory from "./pages/Faculty/FacultyConsultationHistory";
 import ManageAvailability from "./pages/Faculty/ManageAvailability";
 import FacultyNotifications from "./pages/Faculty/FacultyNotifications";
 import FacultyProfile from "./pages/Faculty/FacultyProfile";
+import FacultySecuritySettings from "./pages/Faculty/FacultySecuritySettings";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import UserManagement from "./pages/Admin/UserManagement";
@@ -57,6 +59,7 @@ export default function App() {
           <Route path="history" element={<StudentHistory />} />
           <Route path="notifications" element={<StudentNotifications />} />
           <Route path="profile" element={<StudentProfile />} />
+          <Route path="security" element={<StudentSecuritySettings />} />
           <Route
             path="*"
             element={<NotFoundPage dashboard="/student/dashboard" />}
@@ -73,6 +76,7 @@ export default function App() {
           <Route path="availability" element={<ManageAvailability />} />
           <Route path="notifications" element={<FacultyNotifications />} />
           <Route path="profile" element={<FacultyProfile />} />
+          <Route path="security" element={<FacultySecuritySettings />} />
           <Route
             path="*"
             element={<NotFoundPage dashboard="/faculty/dashboard" />}

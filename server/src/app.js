@@ -17,7 +17,7 @@ app.use(helmet());
 app.use(cors({ origin: env.clientUrl }));
 app.use(express.json({ limit: "2mb" }));
 app.get("/", (_req, res) =>
-  res.json({ message: "ConsultIO API is running" }),
+  res.json({ message: "SOCConsult API is running" }),
 );
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);

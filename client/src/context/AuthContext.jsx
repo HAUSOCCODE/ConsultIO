@@ -37,7 +37,10 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem("consultio_user");
     setUser(null);
   };
-  const updateUser = (nextUser) => setUser(nextUser);
+  const updateUser = (nextUser) => {
+    sessionStorage.setItem("consultio_user", JSON.stringify(nextUser));
+    setUser(nextUser);
+  };
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}

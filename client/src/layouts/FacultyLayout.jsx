@@ -6,6 +6,7 @@ import {
   History,
   LayoutDashboard,
   UserRound,
+  LockKeyhole,
 } from "lucide-react";
 import RoleLayout from "../components/RoleLayout";
 const navigation = [
@@ -28,6 +29,7 @@ const navigation = [
   },
   { icon: Bell, label: "Notifications", path: "/faculty/notifications" },
   { icon: UserRound, label: "Profile", path: "/faculty/profile" },
+  { icon: LockKeyhole, label: "Security Settings", path: "/faculty/security" },
 ];
 export default function FacultyLayout() {
   return <RoleLayout role="faculty" navigation={navigation} />;

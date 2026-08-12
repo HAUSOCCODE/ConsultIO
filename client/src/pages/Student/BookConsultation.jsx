@@ -1,10 +1,12 @@
-import { FileText, Search, Trash2, X } from "lucide-react";
+import { CheckCircle2, FileText, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../../components/UI";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import ProfileImagePreview from "../../components/profile/ProfileImagePreview";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const YEAR_LEVELS = [
   "1st Year",
@@ -21,8 +23,8 @@ const initialForm = (yearLevel = "") => ({
   estimatedDurationMinutes: "10",
   customEstimatedDuration: "",
 });
-const MAX_FILE_SIZE = 4 * 1024 * 1024;
-const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
 const allowedExtensions = new Set([
   "jpg",
   "jpeg",
@@ -54,10 +56,13 @@ const time = (value) =>
 export default function BookPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const reschedule = location.state?.rescheduleAppointment || null;
   const availabilityRequest = useRef(0);
+  const rescheduleInitialized = useRef(false);
   const [faculty, setFaculty] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [schedules, setSchedules] = useState([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [chosenSchedule, setChosenSchedule] = useState(null);
@@ -79,15 +84,18 @@ export default function BookPage() {
   };
   useEffect(() => {
     void loadFaculty();
+    const refresh = () => void loadFaculty();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
   }, []);
 
   useEffect(() => {
-    if (!chosenSchedule && !availabilityOpen) return undefined;
+    if (!chosenSchedule) return undefined;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
       if (event.key !== "Escape") return;
       if (chosenSchedule) setChosenSchedule(null);
-      else setAvailabilityOpen(false);
+      else setChosenSchedule(null);
     };
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", closeOnEscape);
@@ -95,19 +103,22 @@ export default function BookPage() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [availabilityOpen, chosenSchedule]);
+  }, [chosenSchedule]);
 
-  const viewAvailability = async (member, openModal = true) => {
+  const viewAvailability = async (member) => {
     const requestId = ++availabilityRequest.current;
     setSelected(member);
-    setAvailabilityOpen(openModal);
     setSchedules([]);
     setScheduleLoading(true);
     setFormError("");
     try {
       const data = await api(`/availability/faculty/${member._id}`);
-      if (requestId === availabilityRequest.current)
-        setSchedules(Array.isArray(data?.schedules) ? data.schedules : []);
+      if (requestId === availabilityRequest.current) {
+        const loaded = Array.isArray(data?.schedules) ? data.schedules : [];
+        setSchedules(reschedule
+          ? loaded.filter((slot) => String(slot.availabilityId || slot._id) !== String(reschedule.currentAvailabilityId))
+          : loaded);
+      }
     } catch {
       if (requestId === availabilityRequest.current)
         toast.error("Unable to load available schedules. Please try again.");
@@ -115,6 +126,23 @@ export default function BookPage() {
       if (requestId === availabilityRequest.current) setScheduleLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!reschedule || !faculty || rescheduleInitialized.current) return;
+    const originalFaculty = faculty.find((member) => String(member._id) === String(reschedule.facultyId));
+    if (!originalFaculty) return;
+    rescheduleInitialized.current = true;
+    const estimate = Number(reschedule.estimatedDurationMinutes) || 10;
+    const standardEstimate = [10, 15, 20, 30, 45, 60].includes(estimate);
+    setForm({
+      ...initialForm(reschedule.yearLevel || user.yearLevel),
+      subject: reschedule.subject || "",
+      reason: reschedule.reason || "",
+      estimatedDurationMinutes: standardEstimate ? String(estimate) : "custom",
+      customEstimatedDuration: standardEstimate ? "" : String(estimate),
+    });
+    void viewAvailability(originalFaculty);
+  }, [faculty, reschedule, user.yearLevel]);
 
   const visibleFaculty = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -130,9 +158,9 @@ export default function BookPage() {
     if (!incoming.length) return;
     const combined = [...form.documents, ...incoming];
     if (combined.length > 5)
-      return setFormError("You may upload a maximum of 5 supporting files.");
+      return setFormError("You can upload up to 5 supporting files.");
     if (incoming.some((file) => file.size > MAX_FILE_SIZE))
-      return setFormError("Each supporting file must be 4 MB or smaller.");
+      return setFormError("Each supporting file must be 10 MB or smaller.");
     if (
       incoming.some(
         (file) =>
@@ -141,7 +169,7 @@ export default function BookPage() {
     )
       return setFormError("This file type is not supported.");
     if (combined.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_SIZE)
-      return setFormError("Supporting documents must not exceed 4 MB in total.");
+      return setFormError("Supporting documents must not exceed 25 MB in total.");
     setFormError("");
     setForm({ ...form, documents: combined });
   };
@@ -173,13 +201,20 @@ export default function BookPage() {
           : form.estimatedDurationMinutes;
       request.append("estimatedDurationMinutes", estimatedDuration);
       form.documents.forEach((file) => request.append("documents", file));
-      const data = await api("/appointments", {
-        method: "POST",
-        body: request,
-      });
+      const data = reschedule
+        ? await api(`/appointments/${reschedule.appointmentId}/reschedule`, {
+            method: "PUT",
+            body: JSON.stringify({ availabilityId: chosenSchedule.availabilityId }),
+          })
+        : await api("/appointments", { method: "POST", body: request });
+      if (reschedule) {
+        toast.success(data.message || "New schedule submitted successfully.");
+        navigate("/student/appointments", { replace: true, state: {} });
+        return;
+      }
       setChosenSchedule(null);
       setForm(initialForm(user.yearLevel));
-      await viewAvailability(selected, false);
+      await viewAvailability(selected);
       await loadFaculty();
       toast.success(
         data.message || "Consultation request submitted successfully.",
@@ -193,7 +228,9 @@ export default function BookPage() {
         await viewAvailability(selected);
       }
       toast.error(
-        requestError.message || "Unable to book the consultation. Please try again.",
+        requestError.message || (reschedule
+          ? "Unable to submit the new schedule. Please try again."
+          : "Unable to book the consultation. Please try again."),
       );
     } finally {
       setSubmitting(false);
@@ -211,11 +248,14 @@ export default function BookPage() {
     <div className="space-y-7">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">
-          Book Consultation
+          {reschedule ? "Choose a New Schedule" : "Book Consultation"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Select a faculty member to view their consultation availability.
+          {reschedule
+            ? "Select a new schedule for your existing consultation."
+            : "Select a faculty member to view their consultation availability."}
         </p>
+        {reschedule && <button type="button" onClick={() => navigate("/student/appointments")} className="mt-3 text-sm font-bold text-maroon-800 hover:underline">Back to My Appointments</button>}
       </div>
       <label className="relative block w-full min-w-0 max-w-xl">
         <Search className="absolute left-4 top-3.5 text-slate-400" size={19} />
@@ -223,7 +263,7 @@ export default function BookPage() {
           className="field pl-11"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search faculty name or specialization"
+          placeholder="Search faculty name, department, or specialization"
         />
       </label>
       {faculty === null ? (
@@ -233,50 +273,107 @@ export default function BookPage() {
       ) : visibleFaculty.length === 0 ? (
         <EmptyState title="No approved faculty members are currently available." />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-3">
           {visibleFaculty.map((member) => (
             <article
               key={member._id}
-              className={`w-full min-w-0 max-w-full rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${selected?._id === member._id ? "border-maroon-500" : "border-slate-200"}`}
+              role="button"
+              tabIndex={member.availableScheduleCount > 0 ? 0 : -1}
+              aria-pressed={selected?._id === member._id}
+              aria-disabled={member.availableScheduleCount === 0}
+              onClick={() => member.availableScheduleCount > 0 && viewAvailability(member)}
+              onKeyDown={(event) => {
+                if (member.availableScheduleCount > 0 && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  void viewAvailability(member);
+                }
+              }}
+              className={`w-full min-w-0 rounded-2xl border p-4 shadow-sm transition sm:flex sm:items-center sm:gap-4 ${member.availableScheduleCount > 0 ? "cursor-pointer hover:border-maroon-300 hover:bg-maroon-50/30 focus:outline-none focus:ring-2 focus:ring-maroon-400" : "bg-slate-50"} ${selected?._id === member._id ? "border-maroon-500 bg-maroon-50/60" : "border-slate-200 bg-white"}`}
             >
-              <div className="flex gap-4">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-maroon-800 text-xl font-bold text-white">
-                  {member.name?.[0] || "F"}
-                </span>
-                <div className="min-w-0">
-                  <h2 className="break-words font-bold text-slate-900">{member.name}</h2>
-                  <p className="break-words text-sm text-slate-600">
-                    {member.department || "Department not provided"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {member.designation || "Faculty Member"}
-                  </p>
+              <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                <ProfileImagePreview user={member} className="h-12 w-12 rounded-full bg-maroon-800 text-lg font-bold text-white sm:h-14 sm:w-14" buttonClassName="rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="break-words font-bold text-slate-900">{member.name}</h2>
+                    {selected?._id === member._id && <span className="inline-flex items-center gap-1 text-xs font-bold text-maroon-800"><CheckCircle2 size={15} /> Selected</span>}
+                  </div>
+                  <p className="mt-0.5 text-sm text-slate-500">{member.designation || "Faculty Member"}</p>
+                  {(member.department || member.specialization) && (
+                    <p className="mt-1 break-words text-sm text-slate-600">
+                      {[member.department, member.specialization].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 space-y-1 text-sm text-slate-600">
-                <p className="break-words">{member.specialization || "General consultation"}</p>
-                {member.office && <p className="break-words">Office: {member.office}</p>}
-                <p>
-                  Modes:{" "}
-                  {member.consultationModes?.join(", ") || "Not specified"}
-                </p>
-                <p className="font-semibold text-maroon-800">
-                  Available consultation schedules:{" "}
-                  {member.availableScheduleCount || 0}
-                </p>
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 sm:mt-0 sm:shrink-0 sm:justify-end">
+                <p className="text-sm font-semibold text-maroon-800">{member.availableScheduleCount || 0} available {(member.availableScheduleCount || 0) === 1 ? "schedule" : "schedules"}</p>
+                <button type="button" disabled={!member.availableScheduleCount} onClick={(event) => { event.stopPropagation(); void viewAvailability(member); }} className="btn-secondary shrink-0 py-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  View Schedule
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => viewAvailability(member)}
-                className="btn-secondary mt-5 w-full py-2"
-              >
-                View Availability
-              </button>
             </article>
           ))}
         </div>
       )}
-      {selected &&
+      {selected && (
+        <section aria-labelledby="selected-faculty-schedules" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <ProfileImagePreview user={selected} className="h-12 w-12 rounded-full bg-maroon-800 text-lg font-bold text-white" buttonClassName="rounded-full" />
+            <div className="min-w-0">
+              <h2 id="selected-faculty-schedules" className="break-words text-lg font-bold text-maroon-900">
+                Available Schedules for {selected.name}
+              </h2>
+              {(selected.department || selected.specialization) && (
+                <p className="mt-1 break-words text-sm text-slate-500">
+                  {[selected.department, selected.specialization].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+          </div>
+          {scheduleLoading ? (
+            <p className="py-10 text-center text-sm font-semibold text-maroon-800">Loading consultation schedules...</p>
+          ) : schedules.length === 0 ? (
+            <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">No available consultation schedules.</p>
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {schedules.map((schedule) => (
+                <article key={schedule._id} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="break-words font-bold">
+                    {new Date(schedule.startAt).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                  <p className="mt-1 text-sm">{time(schedule.startAt)} – {time(schedule.endAt)}</p>
+                  <p className="mt-2 break-words text-sm text-slate-600">
+                    {schedule.mode} · {schedule.mode === "Online" ? schedule.meetingPlatform || "Meeting platform not provided" : schedule.location || "Location not provided"}
+                  </p>
+                  {schedule.hasActiveRequest ? (
+                    <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center text-sm font-bold text-green-800">
+                      Request already sent · {schedule.requestStatus}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChosenSchedule(schedule);
+                        const windowMinutes = Math.round((new Date(schedule.endAt) - new Date(schedule.startAt)) / 60000);
+                        const defaultEstimate = [10, 15, 20, 30, 45, 60].find((minutes) => minutes <= windowMinutes);
+                        setForm({
+                          ...initialForm(user.yearLevel),
+                          estimatedDurationMinutes: defaultEstimate ? String(defaultEstimate) : "custom",
+                          customEstimatedDuration: defaultEstimate ? "" : "5",
+                        });
+                      }}
+                      className="btn-primary mt-4 w-full py-2"
+                    >
+                      Select Schedule
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {false && selected &&
         availabilityOpen &&
         createPortal(
           <div
@@ -468,7 +565,7 @@ export default function BookPage() {
                     id="booking-modal-title"
                     className="text-xl font-bold text-maroon-900"
                   >
-                    Book Consultation
+                    {reschedule ? "Reschedule Consultation" : "Book Consultation"}
                   </h2>
                   <p className="mt-1 text-sm text-slate-600">
                     Faculty: {selected.name}
@@ -515,6 +612,7 @@ export default function BookPage() {
                     <input
                       className="field mt-2"
                       required
+                      disabled={Boolean(reschedule)}
                       maxLength="150"
                       value={form.subject}
                       onChange={(event) =>
@@ -527,6 +625,7 @@ export default function BookPage() {
                     <select
                       className="field mt-2 w-full"
                       required
+                      disabled={Boolean(reschedule)}
                       value={form.yearLevel}
                       onChange={(event) =>
                         setForm({ ...form, yearLevel: event.target.value })
@@ -544,6 +643,7 @@ export default function BookPage() {
                     Estimated Consultation Time
                     <select
                       className="field mt-2"
+                      disabled={Boolean(reschedule)}
                       value={form.estimatedDurationMinutes}
                       onChange={(event) =>
                         setForm({
@@ -573,6 +673,7 @@ export default function BookPage() {
                         min="5"
                         max={availabilityMinutes}
                         required
+                        disabled={Boolean(reschedule)}
                         value={form.customEstimatedDuration}
                         onChange={(event) =>
                           setForm({
@@ -587,10 +688,15 @@ export default function BookPage() {
                       </span>
                     </label>
                   )}
-                  <label className="block text-sm font-semibold">
+                  {reschedule && (
+                    <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                      Existing consultation details and supporting documents will be preserved.
+                    </p>
+                  )}
+                  {!reschedule && <label className="block text-sm font-semibold">
                     Supporting Documents{" "}
                     <span className="font-normal text-slate-500">
-                      Optional · Up to 5 files · Maximum 4 MB total
+                      Optional · Up to 5 files · Maximum 10 MB per file · 25 MB total
                     </span>
                     <input
                       className="field mt-2"
@@ -602,13 +708,13 @@ export default function BookPage() {
                         event.target.value = "";
                       }}
                     />
-                  </label>
+                  </label>}
                   {formError && (
                     <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                       {formError}
                     </p>
                   )}
-                  {form.documents.length > 0 && (
+                  {!reschedule && form.documents.length > 0 && (
                     <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-3">
                       {form.documents.map((file, index) => (
                         <div
@@ -646,7 +752,7 @@ export default function BookPage() {
                             0,
                           ),
                         )}{" "}
-                        / 4 MB
+                        / 25 MB
                       </p>
                     </div>
                   )}
@@ -655,6 +761,7 @@ export default function BookPage() {
                     <textarea
                       className="field mt-2 min-h-[100px] resize-y"
                       required
+                      disabled={Boolean(reschedule)}
                       maxLength="1000"
                       placeholder="Briefly describe why you are requesting this consultation."
                       value={form.reason}
@@ -674,7 +781,7 @@ export default function BookPage() {
                   Cancel
                 </button>
                 <button disabled={submitting} className="btn-primary">
-                  {submitting ? "Submitting..." : "Submit Consultation Request"}
+                  {submitting ? "Submitting..." : reschedule ? "Submit New Schedule" : "Submit Consultation Request"}
                 </button>
               </footer>
             </form>

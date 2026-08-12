@@ -92,8 +92,10 @@ export default function SupportingDocumentViewer({
     setPreviewLoading(true);
     try {
       setPreviewDocument(await load(document));
-    } catch {
-      setPreviewError("Unable to preview this file.");
+    } catch (error) {
+      if (error.message === "Document is no longer available.")
+        toast.error("Document is no longer available.");
+      setPreviewError(error.message || "Unable to preview this file.");
     } finally {
       setPreviewLoading(false);
     }
@@ -110,8 +112,12 @@ export default function SupportingDocumentViewer({
         link.rel = "noopener noreferrer";
       }
       link.click();
-    } catch {
-      toast.error("Unable to download this file.");
+    } catch (error) {
+      toast.error(
+        error.message === "Document is no longer available."
+          ? "Document is no longer available."
+          : "Unable to download this file.",
+      );
     }
   };
 

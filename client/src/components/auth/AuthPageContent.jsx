@@ -16,7 +16,7 @@ const studentPrograms = [
   "Bachelor of Science in Data Science",
 ];
 const pendingMessage =
-  "Your account has already been created. Please wait for an administrator to approve your registration before you can access ConsultIO. You do not need to register again.";
+  "Your account has already been created. Please wait for an administrator to approve your registration before you can access SOCConsult. You do not need to register again.";
 const rejectedMessage =
   "Your registration was not approved. Please contact the system administrator if you believe this requires review.";
 const inactiveMessage =
@@ -104,7 +104,7 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
           </p>
         </div>
         <p className="text-xs text-slate-200">
-          Holy Angel University · ConsultIO
+          Holy Angel University · SOCConsult
         </p>
       </aside>
       <section className="flex min-w-0 items-center justify-center bg-white px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
@@ -289,7 +289,7 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
               <p className="mt-5 text-center text-sm text-slate-500">
                 {mode === "login" && role !== "admin" ? (
                   <>
-                    New to ConsultIO?{" "}
+                    New to SOCConsult?{" "}
                     <Link
                       className="font-bold text-maroon-800"
                       to={`/${role}/register`}

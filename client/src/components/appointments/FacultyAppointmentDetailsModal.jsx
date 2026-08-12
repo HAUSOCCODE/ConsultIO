@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
 import OnlineMeetingDetails from "./OnlineMeetingDetails";
+import ProfileImagePreview from "../profile/ProfileImagePreview";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -77,6 +78,9 @@ export default function FacultyAppointmentDetailsModal({
         <div className="space-y-6 px-5 py-5 sm:px-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Section title="Student Information">
+              <div className="sm:col-span-2">
+                <ProfileImagePreview user={appointment.student} className="h-16 w-16 rounded-2xl bg-maroon-800 text-xl font-bold text-white" />
+              </div>
               <Detail
                 label="Student Full Name"
                 value={appointment.student?.name}

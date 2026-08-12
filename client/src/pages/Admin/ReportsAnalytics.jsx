@@ -42,7 +42,7 @@ export default function ReportsAnalytics() {
     );
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "consultio-report.csv";
+    a.download = "socconsult-report.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };

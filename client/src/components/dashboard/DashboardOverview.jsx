@@ -33,6 +33,7 @@ export default function DashboardOverview({
   statLinks = {},
   primaryAction,
   excludedStats = [],
+  statGrid = "default",
 }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
@@ -66,7 +67,7 @@ export default function DashboardOverview({
           Hello, {user.name}
         </h1>
         <p className="mt-2 text-sm text-slate-100">
-          Here is the latest activity from your ConsultIO workspace.
+          Here is the latest activity from your SOCConsult workspace.
         </p>
         {primaryAction && (
           <Link
@@ -77,14 +78,14 @@ export default function DashboardOverview({
           </Link>
         )}
       </section>
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <section className={`grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:grid-cols-3 ${statGrid === "faculty" ? "xl:grid-cols-5" : statGrid === "student" ? "xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-4"}`}>
         {Object.entries(data.stats || {})
           .filter(([key]) => !excludedStats.includes(key))
           .map(([key, value]) => (
             <Link
               key={key}
               to={statLinks[key] || "#"}
-              className="group w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-maroon-200 hover:shadow-card"
+              className="group flex h-full w-full min-w-0 cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-maroon-300 hover:shadow-card focus:outline-none focus:ring-2 focus:ring-maroon-400 focus:ring-offset-2 active:scale-[0.99]"
             >
               <div className="flex items-center justify-between">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-maroon-50 text-maroon-800 transition group-hover:bg-maroon-800 group-hover:text-gold-300">
@@ -102,7 +103,7 @@ export default function DashboardOverview({
                   {value}
                 </strong>
               </div>
-              <p className="mt-4 text-sm font-semibold text-slate-600">
+              <p className="mt-4 break-words text-sm font-semibold leading-5 text-slate-600">
                 {titles[key] || key}
               </p>
             </Link>

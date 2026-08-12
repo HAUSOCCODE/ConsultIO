@@ -9,6 +9,13 @@ export default function StudentDashboard() {
       recentLink={{ to: "/student/appointments", label: "View all" }}
       primaryAction={{ to: "/student/book", label: "Book Consultation" }}
       excludedStats={["assignedTasks"]}
+      statLinks={{
+        upcomingAppointments: "/student/appointments",
+        pendingAppointments: "/student/appointments",
+        completedConsultations: "/student/history",
+        unreadNotifications: "/student/notifications",
+      }}
+      statGrid="student"
     />
   );
 }

@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Clock3,
   LayoutDashboard,
+  LockKeyhole,
   UserRound,
 } from "lucide-react";
 import RoleLayout from "../components/RoleLayout";
@@ -17,6 +18,7 @@ const navigation = [
   { icon: Clock3, label: "Consultation History", path: "/student/history" },
   { icon: Bell, label: "Notifications", path: "/student/notifications" },
   { icon: UserRound, label: "Profile", path: "/student/profile" },
+  { icon: LockKeyhole, label: "Security Settings", path: "/student/security" },
 ];
 export default function StudentLayout() {
   return <RoleLayout role="student" navigation={navigation} />;
