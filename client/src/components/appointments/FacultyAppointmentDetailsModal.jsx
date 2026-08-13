@@ -5,6 +5,7 @@ import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
 import OnlineMeetingDetails from "./OnlineMeetingDetails";
 import ProfileImagePreview from "../profile/ProfileImagePreview";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -19,6 +20,7 @@ export default function FacultyAppointmentDetailsModal({
   appointment,
   onClose,
   onComplete,
+  showFacultyInfo = false,
 }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -79,11 +81,14 @@ export default function FacultyAppointmentDetailsModal({
           <div className="grid gap-6 md:grid-cols-2">
             <Section title="Student Information">
               <div className="sm:col-span-2">
-                <ProfileImagePreview user={appointment.student} className="h-16 w-16 rounded-2xl bg-maroon-800 text-xl font-bold text-white" />
+                <ProfileImagePreview
+                  user={appointment.student}
+                  className="h-16 w-16 rounded-2xl bg-maroon-800 text-xl font-bold text-white"
+                />
               </div>
               <Detail
                 label="Student Full Name"
-                value={appointment.student?.name}
+                value={formatPersonName(appointment.student?.name)}
               />
               <Detail
                 label="Student ID"
@@ -122,6 +127,29 @@ export default function FacultyAppointmentDetailsModal({
                 value={safeDate(appointment.createdAt)}
               />
             </Section>
+            {showFacultyInfo && (
+              <Section title="Faculty Information">
+                <ProfileImagePreview
+                  user={appointment.faculty}
+                  className="h-16 w-16 rounded-2xl bg-maroon-800 text-xl font-bold text-white"
+                />
+                <Detail
+                  label="Faculty Full Name"
+                  value={formatPersonName(appointment.faculty?.name)}
+                />
+                <Detail
+                  label="Position / Designation"
+                  value={
+                    appointment.faculty?.position || "Position not provided"
+                  }
+                />
+                <Detail
+                  label="Official Faculty Email"
+                  value={appointment.faculty?.email}
+                  wide
+                />
+              </Section>
+            )}
           </div>
 
           <Section title="Schedule Information">

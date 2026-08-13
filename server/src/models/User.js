@@ -27,6 +27,8 @@ const userSchema = new mongoose.Schema(
     studentId: { type: String, trim: true },
     employeeId: { type: String, trim: true },
     program: { type: String, trim: true },
+    position: { type: String, trim: true, maxlength: 100 },
+    // Legacy Faculty data may still contain department. New Faculty flows use position.
     department: { type: String, trim: true },
     yearLevel: { type: String, trim: true },
     office: { type: String, trim: true },

@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import ProfileImagePreview from "../../components/profile/ProfileImagePreview";
 import { useLocation, useNavigate } from "react-router-dom";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 const YEAR_LEVELS = [
   "1st Year",
@@ -60,11 +61,13 @@ export default function BookPage() {
   const navigate = useNavigate();
   const reschedule = location.state?.rescheduleAppointment || null;
   const availabilityRequest = useRef(0);
+  const scheduleCache = useRef(new Map());
   const rescheduleInitialized = useRef(false);
   const [faculty, setFaculty] = useState(null);
   const [selected, setSelected] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [chosenSchedule, setChosenSchedule] = useState(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(() => initialForm(user.yearLevel));
@@ -90,12 +93,12 @@ export default function BookPage() {
   }, []);
 
   useEffect(() => {
-    if (!chosenSchedule) return undefined;
+    if (!chosenSchedule && !availabilityOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
       if (event.key !== "Escape") return;
       if (chosenSchedule) setChosenSchedule(null);
-      else setChosenSchedule(null);
+      else setAvailabilityOpen(false);
     };
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", closeOnEscape);
@@ -103,21 +106,34 @@ export default function BookPage() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [chosenSchedule]);
+  }, [availabilityOpen, chosenSchedule]);
 
   const viewAvailability = async (member) => {
     const requestId = ++availabilityRequest.current;
     setSelected(member);
+    setAvailabilityOpen(true);
+    setFormError("");
+    const cached = scheduleCache.current.get(String(member._id));
+    if (cached) {
+      setSchedules(cached);
+      setScheduleLoading(false);
+      return;
+    }
     setSchedules([]);
     setScheduleLoading(true);
-    setFormError("");
     try {
       const data = await api(`/availability/faculty/${member._id}`);
       if (requestId === availabilityRequest.current) {
         const loaded = Array.isArray(data?.schedules) ? data.schedules : [];
-        setSchedules(reschedule
-          ? loaded.filter((slot) => String(slot.availabilityId || slot._id) !== String(reschedule.currentAvailabilityId))
-          : loaded);
+        const validSchedules = reschedule
+          ? loaded.filter(
+              (slot) =>
+                String(slot.availabilityId || slot._id) !==
+                String(reschedule.currentAvailabilityId),
+            )
+          : loaded;
+        scheduleCache.current.set(String(member._id), validSchedules);
+        setSchedules(validSchedules);
       }
     } catch {
       if (requestId === availabilityRequest.current)
@@ -129,7 +145,9 @@ export default function BookPage() {
 
   useEffect(() => {
     if (!reschedule || !faculty || rescheduleInitialized.current) return;
-    const originalFaculty = faculty.find((member) => String(member._id) === String(reschedule.facultyId));
+    const originalFaculty = faculty.find(
+      (member) => String(member._id) === String(reschedule.facultyId),
+    );
     if (!originalFaculty) return;
     rescheduleInitialized.current = true;
     const estimate = Number(reschedule.estimatedDurationMinutes) || 10;
@@ -147,7 +165,7 @@ export default function BookPage() {
   const visibleFaculty = useMemo(() => {
     const term = search.trim().toLowerCase();
     return (faculty || []).filter((member) =>
-      [member.name, member.department, member.specialization].some((value) =>
+      [member.name, member.position, member.specialization].some((value) =>
         value?.toLowerCase().includes(term),
       ),
     );
@@ -169,7 +187,9 @@ export default function BookPage() {
     )
       return setFormError("This file type is not supported.");
     if (combined.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_SIZE)
-      return setFormError("Supporting documents must not exceed 25 MB in total.");
+      return setFormError(
+        "Supporting documents must not exceed 25 MB in total.",
+      );
     setFormError("");
     setForm({ ...form, documents: combined });
   };
@@ -204,7 +224,9 @@ export default function BookPage() {
       const data = reschedule
         ? await api(`/appointments/${reschedule.appointmentId}/reschedule`, {
             method: "PUT",
-            body: JSON.stringify({ availabilityId: chosenSchedule.availabilityId }),
+            body: JSON.stringify({
+              availabilityId: chosenSchedule.availabilityId,
+            }),
           })
         : await api("/appointments", { method: "POST", body: request });
       if (reschedule) {
@@ -214,7 +236,7 @@ export default function BookPage() {
       }
       setChosenSchedule(null);
       setForm(initialForm(user.yearLevel));
-      await viewAvailability(selected);
+      scheduleCache.current.delete(String(selected._id));
       await loadFaculty();
       toast.success(
         data.message || "Consultation request submitted successfully.",
@@ -225,12 +247,14 @@ export default function BookPage() {
         "You already have an active consultation request for this faculty schedule."
       ) {
         setChosenSchedule(null);
+        scheduleCache.current.delete(String(selected._id));
         await viewAvailability(selected);
       }
       toast.error(
-        requestError.message || (reschedule
-          ? "Unable to submit the new schedule. Please try again."
-          : "Unable to book the consultation. Please try again."),
+        requestError.message ||
+          (reschedule
+            ? "Unable to submit the new schedule. Please try again."
+            : "Unable to book the consultation. Please try again."),
       );
     } finally {
       setSubmitting(false);
@@ -255,7 +279,15 @@ export default function BookPage() {
             ? "Select a new schedule for your existing consultation."
             : "Select a faculty member to view their consultation availability."}
         </p>
-        {reschedule && <button type="button" onClick={() => navigate("/student/appointments")} className="mt-3 text-sm font-bold text-maroon-800 hover:underline">Back to My Appointments</button>}
+        {reschedule && (
+          <button
+            type="button"
+            onClick={() => navigate("/student/appointments")}
+            className="mt-3 text-sm font-bold text-maroon-800 hover:underline"
+          >
+            Back to My Appointments
+          </button>
+        )}
       </div>
       <label className="relative block w-full min-w-0 max-w-xl">
         <Search className="absolute left-4 top-3.5 text-slate-400" size={19} />
@@ -263,7 +295,7 @@ export default function BookPage() {
           className="field pl-11"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search faculty name, department, or specialization"
+          placeholder="Search faculty name, position, or specialization"
         />
       </label>
       {faculty === null ? (
@@ -278,36 +310,65 @@ export default function BookPage() {
             <article
               key={member._id}
               role="button"
-              tabIndex={member.availableScheduleCount > 0 ? 0 : -1}
+              tabIndex={0}
               aria-pressed={selected?._id === member._id}
-              aria-disabled={member.availableScheduleCount === 0}
-              onClick={() => member.availableScheduleCount > 0 && viewAvailability(member)}
+              onClick={() => void viewAvailability(member)}
               onKeyDown={(event) => {
-                if (member.availableScheduleCount > 0 && (event.key === "Enter" || event.key === " ")) {
+                if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   void viewAvailability(member);
                 }
               }}
-              className={`w-full min-w-0 rounded-2xl border p-4 shadow-sm transition sm:flex sm:items-center sm:gap-4 ${member.availableScheduleCount > 0 ? "cursor-pointer hover:border-maroon-300 hover:bg-maroon-50/30 focus:outline-none focus:ring-2 focus:ring-maroon-400" : "bg-slate-50"} ${selected?._id === member._id ? "border-maroon-500 bg-maroon-50/60" : "border-slate-200 bg-white"}`}
+              className={`w-full min-w-0 cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:border-maroon-300 hover:bg-maroon-50/30 focus:outline-none focus:ring-2 focus:ring-maroon-400 sm:flex sm:items-center sm:gap-4 ${selected?._id === member._id ? "border-maroon-500 bg-maroon-50/60" : "border-slate-200 bg-white"}`}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-                <ProfileImagePreview user={member} className="h-12 w-12 rounded-full bg-maroon-800 text-lg font-bold text-white sm:h-14 sm:w-14" buttonClassName="rounded-full" />
+                <span
+                  className="shrink-0"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <ProfileImagePreview
+                    user={member}
+                    className="h-12 w-12 rounded-full bg-maroon-800 text-lg font-bold text-white sm:h-14 sm:w-14"
+                    buttonClassName="rounded-full"
+                  />
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words font-bold text-slate-900">{member.name}</h2>
-                    {selected?._id === member._id && <span className="inline-flex items-center gap-1 text-xs font-bold text-maroon-800"><CheckCircle2 size={15} /> Selected</span>}
+                    <h2 className="break-words font-bold text-slate-900">
+                      {formatPersonName(member.name)}
+                    </h2>
+                    {selected?._id === member._id && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-maroon-800">
+                        <CheckCircle2 size={15} /> Selected
+                      </span>
+                    )}
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500">{member.designation || "Faculty Member"}</p>
-                  {(member.department || member.specialization) && (
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    {member.position || "Position not provided"}
+                  </p>
+                  {member.specialization && (
                     <p className="mt-1 break-words text-sm text-slate-600">
-                      {[member.department, member.specialization].filter(Boolean).join(" · ")}
+                      {member.specialization}
                     </p>
                   )}
                 </div>
               </div>
               <div className="mt-3 flex min-w-0 items-center justify-between gap-3 sm:mt-0 sm:shrink-0 sm:justify-end">
-                <p className="text-sm font-semibold text-maroon-800">{member.availableScheduleCount || 0} available {(member.availableScheduleCount || 0) === 1 ? "schedule" : "schedules"}</p>
-                <button type="button" disabled={!member.availableScheduleCount} onClick={(event) => { event.stopPropagation(); void viewAvailability(member); }} className="btn-secondary shrink-0 py-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <p className="text-sm font-semibold text-maroon-800">
+                  {member.availableScheduleCount || 0} available{" "}
+                  {(member.availableScheduleCount || 0) === 1
+                    ? "schedule"
+                    : "schedules"}
+                </p>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void viewAvailability(member);
+                  }}
+                  className="btn-secondary shrink-0 py-2"
+                >
                   View Schedule
                 </button>
               </div>
@@ -315,69 +376,11 @@ export default function BookPage() {
           ))}
         </div>
       )}
-      {selected && (
-        <section aria-labelledby="selected-faculty-schedules" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <ProfileImagePreview user={selected} className="h-12 w-12 rounded-full bg-maroon-800 text-lg font-bold text-white" buttonClassName="rounded-full" />
-            <div className="min-w-0">
-              <h2 id="selected-faculty-schedules" className="break-words text-lg font-bold text-maroon-900">
-                Available Schedules for {selected.name}
-              </h2>
-              {(selected.department || selected.specialization) && (
-                <p className="mt-1 break-words text-sm text-slate-500">
-                  {[selected.department, selected.specialization].filter(Boolean).join(" · ")}
-                </p>
-              )}
-            </div>
-          </div>
-          {scheduleLoading ? (
-            <p className="py-10 text-center text-sm font-semibold text-maroon-800">Loading consultation schedules...</p>
-          ) : schedules.length === 0 ? (
-            <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">No available consultation schedules.</p>
-          ) : (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {schedules.map((schedule) => (
-                <article key={schedule._id} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="break-words font-bold">
-                    {new Date(schedule.startAt).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
-                  </p>
-                  <p className="mt-1 text-sm">{time(schedule.startAt)} – {time(schedule.endAt)}</p>
-                  <p className="mt-2 break-words text-sm text-slate-600">
-                    {schedule.mode} · {schedule.mode === "Online" ? schedule.meetingPlatform || "Meeting platform not provided" : schedule.location || "Location not provided"}
-                  </p>
-                  {schedule.hasActiveRequest ? (
-                    <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center text-sm font-bold text-green-800">
-                      Request already sent · {schedule.requestStatus}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setChosenSchedule(schedule);
-                        const windowMinutes = Math.round((new Date(schedule.endAt) - new Date(schedule.startAt)) / 60000);
-                        const defaultEstimate = [10, 15, 20, 30, 45, 60].find((minutes) => minutes <= windowMinutes);
-                        setForm({
-                          ...initialForm(user.yearLevel),
-                          estimatedDurationMinutes: defaultEstimate ? String(defaultEstimate) : "custom",
-                          customEstimatedDuration: defaultEstimate ? "" : "5",
-                        });
-                      }}
-                      className="btn-primary mt-4 w-full py-2"
-                    >
-                      Select Schedule
-                    </button>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-      {false && selected &&
+      {selected &&
         availabilityOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-2 sm:p-4"
+            className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) =>
               event.target === event.currentTarget && setAvailabilityOpen(false)
             }
@@ -387,25 +390,29 @@ export default function BookPage() {
               aria-modal="true"
               aria-labelledby="faculty-availability-title"
               onMouseDown={(event) => event.stopPropagation()}
-              className="max-h-[90vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl sm:max-h-[85vh] sm:w-full"
+              className="max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl"
             >
               <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
-                <div className="min-w-0">
-                  <h2
-                    id="faculty-availability-title"
-                    className="text-xl font-bold text-maroon-900"
-                  >
-                    Faculty Availability
-                  </h2>
-                  <p className="mt-2 truncate font-bold text-slate-900">
-                    {selected.name}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {selected.designation || "Faculty Member"}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {selected.department || "Department not provided"}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <ProfileImagePreview
+                    user={selected}
+                    className="h-12 w-12 shrink-0 rounded-full bg-maroon-800 text-lg font-bold text-white sm:h-14 sm:w-14"
+                    buttonClassName="shrink-0 rounded-full"
+                  />
+                  <div className="min-w-0">
+                    <h2
+                      id="faculty-availability-title"
+                      className="text-xl font-bold text-maroon-900"
+                    >
+                      Available Schedules
+                    </h2>
+                    <p className="mt-1 break-words font-bold text-slate-900">
+                      {formatPersonName(selected.name)}
+                    </p>
+                    <p className="break-words text-sm text-slate-600">
+                      {selected.position || "Position not provided"}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -418,6 +425,9 @@ export default function BookPage() {
                 </button>
               </header>
               <div className="px-5 py-5 sm:px-6">
+                <p className="mb-5 text-sm text-slate-600">
+                  Select an available consultation schedule.
+                </p>
                 {(selected.specialization ||
                   selected.office ||
                   selected.consultationModes?.length) && (
@@ -452,17 +462,14 @@ export default function BookPage() {
                     )}
                   </dl>
                 )}
-                <h3 className="font-bold text-maroon-900">
-                  Available Consultation Schedules
-                </h3>
                 {scheduleLoading ? (
                   <p className="py-10 text-center text-sm font-semibold text-maroon-800">
                     Loading consultation schedules...
                   </p>
                 ) : schedules.length === 0 ? (
                   <EmptyState
-                    title="No consultation schedules are currently available for this faculty member."
-                    text="Please check again later."
+                    title="No available consultation schedules."
+                    text="This Faculty member has not published an available schedule yet."
                   />
                 ) : (
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -531,7 +538,7 @@ export default function BookPage() {
                             }}
                             className="btn-primary mt-4 w-full py-2"
                           >
-                            Request Consultation
+                            Select Schedule
                           </button>
                         )}
                       </article>
@@ -565,10 +572,10 @@ export default function BookPage() {
                     id="booking-modal-title"
                     className="text-xl font-bold text-maroon-900"
                   >
-                    {reschedule ? "Reschedule Consultation" : "Book Consultation"}
+                    {reschedule ? "Choose a New Schedule" : "Book Consultation"}
                   </h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    Faculty: {selected.name}
+                    Faculty: {formatPersonName(selected.name)}
                   </p>
                 </div>
                 <button
@@ -690,25 +697,29 @@ export default function BookPage() {
                   )}
                   {reschedule && (
                     <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                      Existing consultation details and supporting documents will be preserved.
+                      Existing consultation details and supporting documents
+                      will be preserved.
                     </p>
                   )}
-                  {!reschedule && <label className="block text-sm font-semibold">
-                    Supporting Documents{" "}
-                    <span className="font-normal text-slate-500">
-                      Optional · Up to 5 files · Maximum 10 MB per file · 25 MB total
-                    </span>
-                    <input
-                      className="field mt-2"
-                      type="file"
-                      multiple
-                      accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.mp4,.webm"
-                      onChange={(event) => {
-                        attach(event.target.files);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>}
+                  {!reschedule && (
+                    <label className="block text-sm font-semibold">
+                      Supporting Documents{" "}
+                      <span className="font-normal text-slate-500">
+                        Optional · Up to 5 files · Maximum 10 MB per file · 25
+                        MB total
+                      </span>
+                      <input
+                        className="field mt-2"
+                        type="file"
+                        multiple
+                        accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.mp4,.webm"
+                        onChange={(event) => {
+                          attach(event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
                   {formError && (
                     <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                       {formError}
@@ -781,7 +792,11 @@ export default function BookPage() {
                   Cancel
                 </button>
                 <button disabled={submitting} className="btn-primary">
-                  {submitting ? "Submitting..." : reschedule ? "Submit New Schedule" : "Submit Consultation Request"}
+                  {submitting
+                    ? "Submitting..."
+                    : reschedule
+                      ? "Submit New Schedule"
+                      : "Submit Consultation Request"}
                 </button>
               </footer>
             </form>

@@ -4,6 +4,10 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import Brand from "../Brand";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
+import {
+  FACULTY_POSITIONS,
+  OTHER_POSITION,
+} from "../../config/facultyPositions";
 const labels = {
   student: "Student",
   faculty: "Faculty Member",
@@ -40,7 +44,8 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
     studentId: "",
     employeeId: "",
     program: "",
-    department: "",
+    position: "",
+    customPosition: "",
   });
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
@@ -52,15 +57,38 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
   }, [mode, role]);
   if (!labels[role] || (role === "admin" && mode === "register"))
     return <Navigate to="/get-started" replace />;
-  const domain =
-    role === "student" ? "student.hau.edu.ph" : "hau.edu.ph";
+  const domain = role === "student" ? "student.hau.edu.ph" : "hau.edu.ph";
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
       if (mode === "register") {
-        const normalized = { ...form, email: form.email.trim().toLowerCase() };
+        if (role === "faculty" && !form.position) {
+          setError("Position / Designation is required.");
+          setBusy(false);
+          return;
+        }
+        if (
+          role === "faculty" &&
+          form.position === OTHER_POSITION &&
+          !form.customPosition.trim()
+        ) {
+          setError("Position / Designation is required.");
+          setBusy(false);
+          return;
+        }
+        const { customPosition, ...registrationForm } = form;
+        const normalized = {
+          ...registrationForm,
+          email: form.email.trim().toLowerCase(),
+          position:
+            role === "faculty"
+              ? form.position === OTHER_POSITION
+                ? customPosition.trim()
+                : form.position
+              : undefined,
+        };
         await api(`/auth/register/${role}`, {
           method: "POST",
           body: JSON.stringify(normalized),
@@ -180,7 +208,11 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
                       />
                     </Field>
                     <Field
-                      label={role === "student" ? "Program" : "Department"}
+                      label={
+                        role === "student"
+                          ? "Program"
+                          : "Position / Designation"
+                      }
                     >
                       {role === "student" ? (
                         <select
@@ -204,15 +236,72 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
                             </option>
                           ))}
                         </select>
+                      ) : form.position === OTHER_POSITION ? (
+                        <span className="block">
+                          <input
+                            className="field"
+                            required
+                            autoFocus
+                            placeholder="Enter your position or designation"
+                            value={form.customPosition}
+                            onInvalid={(e) =>
+                              e.currentTarget.setCustomValidity(
+                                "Position / Designation is required.",
+                              )
+                            }
+                            onChange={(e) => {
+                              e.currentTarget.setCustomValidity("");
+                              setForm({
+                                ...form,
+                                customPosition: e.target.value,
+                              });
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                position: "",
+                                customPosition: "",
+                              })
+                            }
+                            className="mt-1.5 text-xs font-semibold text-maroon-800 hover:underline"
+                          >
+                            Choose from list
+                          </button>
+                        </span>
                       ) : (
-                        <input
+                        <select
                           className="field"
                           required
-                          value={form.department}
-                          onChange={(e) =>
-                            setForm({ ...form, department: e.target.value })
+                          value={form.position}
+                          onInvalid={(e) =>
+                            e.currentTarget.setCustomValidity(
+                              "Position / Designation is required.",
+                            )
                           }
-                        />
+                          onChange={(e) => {
+                            e.currentTarget.setCustomValidity("");
+                            setForm({
+                              ...form,
+                              position: e.target.value,
+                              customPosition: "",
+                            });
+                          }}
+                        >
+                          <option value="">
+                            Select position / designation
+                          </option>
+                          {FACULTY_POSITIONS.map((position) => (
+                            <option key={position} value={position}>
+                              {position}
+                            </option>
+                          ))}
+                          <option value={OTHER_POSITION}>
+                            {OTHER_POSITION}
+                          </option>
+                        </select>
                       )}
                     </Field>
                   </>
@@ -249,7 +338,13 @@ export default function AuthPageContent({ mode, role: fixedRole }) {
                     }
                   />
                 </Field>
-                <Field label="Password" wide={mode === "login"}>
+                <Field
+                  label="Password"
+                  wide={
+                    mode === "login" ||
+                    (mode === "register" && role === "faculty")
+                  }
+                >
                   <div className="relative">
                     <input
                       className="field pr-12"

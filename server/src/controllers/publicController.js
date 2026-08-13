@@ -15,7 +15,7 @@ export async function getPublicStats(_req, res) {
         registrationStatus: "Approved",
         accountStatus: "Active",
       }),
-      Availability.findOne({ isActive: true, startAt: { $gt: now } })
+      Availability.findOne({ isActive: true, endAt: { $gt: now } })
         .sort({ startAt: 1 })
         .select("startAt"),
     ]);

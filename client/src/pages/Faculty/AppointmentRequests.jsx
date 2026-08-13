@@ -63,6 +63,18 @@ export default function AppointmentRequests() {
     };
   }, [loadSchedules, refresh]);
 
+  useEffect(() => {
+    if (
+      schedules &&
+      selectedId &&
+      !schedules.some((schedule) => schedule._id === selectedId)
+    ) {
+      setSelectedId("");
+      setDetails(null);
+      setDetailsError("");
+    }
+  }, [schedules, selectedId]);
+
   const update = async (appointment, status, extra = {}) => {
     try {
       const data = await api(`/appointments/${appointment._id}/status`, {
@@ -122,7 +134,7 @@ export default function AppointmentRequests() {
       {schedules === null ? (
         <p className="py-10 text-center text-sm font-semibold text-maroon-800">Loading schedules...</p>
       ) : schedules.length === 0 ? (
-        <EmptyState title="No published schedules" text="Schedules created in Manage Availability will appear here, even before students submit requests." />
+        <EmptyState title="No active request schedules" text="Upcoming schedules created in Manage Availability will appear here." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {schedules.map((schedule) => (

@@ -6,12 +6,14 @@ import {
   clearReadNotifications,
   deleteNotification,
   markAllNotificationsRead,
+  markAllNotificationsUnread,
   markNotificationRead,
 } from "../controllers/notificationController.js";
 const router = Router();
 router.use(authenticate);
 router.get("/", getNotifications);
 router.put("/read-all", markAllNotificationsRead);
+router.put("/unread-all", markAllNotificationsUnread);
 router.put("/:id/read", markNotificationRead);
 router.delete("/read", clearReadNotifications);
 router.delete("/:id", deleteNotification);

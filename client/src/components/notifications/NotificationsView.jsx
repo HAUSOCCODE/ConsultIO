@@ -13,6 +13,7 @@ import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState } from "../UI";
 import Pagination from "../Pagination";
 import { useToast } from "../../context/ToastContext";
+import { formatPersonNameInNotification } from "../../utils/formatPersonName";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -37,6 +38,7 @@ export default function NotificationsPage({ compact = false }) {
   const [selected, setSelected] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [mutating, setMutating] = useState(false);
+  const [markingUnread, setMarkingUnread] = useState(false);
 
   const load = (background = false) => {
     if (!background) setLoading(true);
@@ -62,8 +64,14 @@ export default function NotificationsPage({ compact = false }) {
     };
   }, []);
 
-  const refreshBadge = () =>
-    window.dispatchEvent(new Event("notifications:updated"));
+  const refreshBadge = (nextUnreadCount) =>
+    window.dispatchEvent(
+      Number.isFinite(nextUnreadCount)
+        ? new CustomEvent("notifications:updated", {
+            detail: { unreadCount: nextUnreadCount },
+          })
+        : new Event("notifications:updated"),
+    );
   const read = async (id) => {
     try {
       await api(`/notifications/${id}/read`, { method: "PUT" });
@@ -99,6 +107,31 @@ export default function NotificationsPage({ compact = false }) {
       refreshBadge();
     } catch {
       toast.error("Unable to update notifications. Please try again.");
+    }
+  };
+  const unreadAll = async () => {
+    if (markingUnread) return;
+    setMarkingUnread(true);
+    try {
+      const data = await api("/notifications/unread-all", { method: "PUT" });
+      setNotifications((current) =>
+        current.map((item) => ({
+          ...item,
+          isRead: false,
+          readAt: undefined,
+        })),
+      );
+      setSelected((current) =>
+        current ? { ...current, isRead: false, readAt: undefined } : current,
+      );
+      const nextUnreadCount = Number(data?.unreadCount) || notifications.length;
+      setUnreadCount(nextUnreadCount);
+      toast.success(data.message || "All notifications marked as unread.");
+      refreshBadge(nextUnreadCount);
+    } catch {
+      toast.error("Unable to update notifications. Please try again.");
+    } finally {
+      setMarkingUnread(false);
     }
   };
   const confirmDelete = (notification) =>
@@ -163,6 +196,8 @@ export default function NotificationsPage({ compact = false }) {
           setSelected={setSelected}
           read={read}
           readAll={readAll}
+          unreadAll={unreadAll}
+          markingUnread={markingUnread}
           confirmDelete={confirmDelete}
           confirmClear={confirmClear}
         />
@@ -189,6 +224,8 @@ export default function NotificationsPage({ compact = false }) {
           notifications={notifications}
           unreadCount={unreadCount}
           onReadAll={readAll}
+          onUnreadAll={unreadAll}
+          markingUnread={markingUnread}
           onClear={confirmClear}
         />
       </div>
@@ -234,7 +271,7 @@ export default function NotificationsPage({ compact = false }) {
                       )}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {notification.message ||
+                      {formatPersonNameInNotification(notification.message) ||
                         "A SOCConsult activity was updated."}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
@@ -292,6 +329,8 @@ function CompactNotifications({
   setSelected,
   read,
   readAll,
+  unreadAll,
+  markingUnread,
   confirmDelete,
   confirmClear,
 }) {
@@ -346,6 +385,8 @@ function CompactNotifications({
           notifications={notifications}
           unreadCount={unreadCount}
           onReadAll={readAll}
+          onUnreadAll={unreadAll}
+          markingUnread={markingUnread}
           onClear={confirmClear}
         />
       </div>
@@ -541,12 +582,22 @@ function NotificationActions({
   notifications,
   unreadCount,
   onReadAll,
+  onUnreadAll,
+  markingUnread,
   onClear,
 }) {
   if (notifications.length === 0) return null;
   const hasRead = notifications.some((notification) => notification.isRead);
   return (
     <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+      <button
+        type="button"
+        onClick={onUnreadAll}
+        disabled={!hasRead || markingUnread}
+        className="btn-secondary w-full py-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      >
+        {markingUnread ? "Marking Unread..." : "Mark All as Unread"}
+      </button>
       {unreadCount > 0 && (
         <button
           type="button"
@@ -590,7 +641,11 @@ function DeleteConfirmationModal({ action, loading, onCancel, onConfirm }) {
     : isRead
       ? "This will permanently remove all of your read notifications."
       : "This will permanently remove all of your notifications.";
-  const confirmLabel = isDelete ? "Delete" : isRead ? "Clear Read" : "Clear All";
+  const confirmLabel = isDelete
+    ? "Delete"
+    : isRead
+      ? "Clear Read"
+      : "Clear All";
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -646,7 +701,11 @@ function DeleteConfirmationModal({ action, loading, onCancel, onConfirm }) {
             disabled={loading}
             className="inline-flex w-full items-center justify-center rounded-lg bg-red-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {loading ? (isDelete ? "Deleting..." : "Clearing...") : confirmLabel}
+            {loading
+              ? isDelete
+                ? "Deleting..."
+                : "Clearing..."
+              : confirmLabel}
           </button>
         </div>
       </section>
@@ -751,7 +810,8 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
               Full Message
             </p>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">
-              {notification.message || "A SOCConsult activity was updated."}
+              {formatPersonNameInNotification(notification.message) ||
+                "A SOCConsult activity was updated."}
             </p>
           </div>
           <dl className="grid gap-4 sm:grid-cols-2">
@@ -772,7 +832,11 @@ function NotificationDetailsModal({ notification, date, typeLabel, onClose }) {
           </dl>
         </div>
         <footer className="flex justify-end border-t border-slate-200 px-4 py-4 sm:px-6">
-          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary w-full sm:w-auto"
+          >
             Close
           </button>
         </footer>

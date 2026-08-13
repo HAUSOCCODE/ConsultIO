@@ -4,13 +4,28 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/apiClient";
 import { useToast } from "../../context/ToastContext";
 import ProfilePictureEditor from "./ProfilePictureEditor";
+import { formatPersonName } from "../../utils/formatPersonName";
+import {
+  FACULTY_POSITIONS,
+  OTHER_POSITION,
+} from "../../config/facultyPositions";
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const toast = useToast();
   const [form, setForm] = useState({
-    name: user.name || "",
+    name: formatPersonName(user.name),
     program: user.program || "",
-    department: user.department || "",
+    position: FACULTY_POSITIONS.includes(user.position)
+      ? user.position
+      : user.position
+        ? OTHER_POSITION
+        : "",
+    customPosition:
+      user.position &&
+      user.position !== OTHER_POSITION &&
+      !FACULTY_POSITIONS.includes(user.position)
+        ? user.position
+        : "",
     yearLevel: user.yearLevel || "",
     office: user.office || "",
     specialization: user.specialization || "",
@@ -19,9 +34,31 @@ export default function ProfilePage() {
   const save = async (e) => {
     e.preventDefault();
     try {
+      if (user.role === "faculty" && !form.position) {
+        toast.error("Position / Designation is required.");
+        return;
+      }
+      if (
+        user.role === "faculty" &&
+        form.position === OTHER_POSITION &&
+        !form.customPosition.trim()
+      ) {
+        toast.error("Position / Designation is required.");
+        return;
+      }
+      const { customPosition, ...profileForm } = form;
       const data = await api("/auth/me", {
         method: "PUT",
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...profileForm,
+          name: formatPersonName(form.name),
+          position:
+            user.role === "faculty"
+              ? form.position === OTHER_POSITION
+                ? customPosition.trim()
+                : form.position
+              : undefined,
+        }),
       });
       updateUser(data.user);
       toast.success(data.message || "Profile updated successfully.");
@@ -42,7 +79,7 @@ export default function ProfilePage() {
         <div className="mb-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <ProfilePictureEditor />
           <div className="min-w-0">
-            <h2 className="font-bold">{user.name}</h2>
+            <h2 className="font-bold">{formatPersonName(user.name)}</h2>
             <p className="break-all text-sm text-slate-500">
               {user.email || user.username}
             </p>
@@ -53,7 +90,6 @@ export default function ProfilePage() {
             ["name", "Full Name"],
             ["program", "Program"],
             ["yearLevel", "Year Level"],
-            ["department", "Department"],
             ["office", "Office"],
             ["specialization", "Specialization"],
             ["contactNumber", "Contact Number"],
@@ -62,7 +98,7 @@ export default function ProfilePage() {
               if (key === "name" || key === "contactNumber") return true;
               return user.role === "student"
                 ? ["program", "yearLevel"].includes(key)
-                : ["department", "office", "specialization"].includes(key);
+                : ["office", "specialization"].includes(key);
             })
             .map(([key, label]) => (
               <label key={key} className="text-sm font-semibold">
@@ -74,6 +110,73 @@ export default function ProfilePage() {
                 />
               </label>
             ))}
+          {user.role === "faculty" && (
+            <label className="text-sm font-semibold">
+              Position / Designation
+              {form.position === OTHER_POSITION ? (
+                <span className="mt-2 block">
+                  <input
+                    className="field"
+                    required
+                    placeholder="Enter your position or designation"
+                    value={form.customPosition}
+                    onInvalid={(event) =>
+                      event.currentTarget.setCustomValidity(
+                        "Position / Designation is required.",
+                      )
+                    }
+                    onChange={(event) => {
+                      event.currentTarget.setCustomValidity("");
+                      setForm({
+                        ...form,
+                        customPosition: event.target.value,
+                      });
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        position: "",
+                        customPosition: "",
+                      })
+                    }
+                    className="mt-1.5 text-xs font-semibold text-maroon-800 hover:underline"
+                  >
+                    Choose from list
+                  </button>
+                </span>
+              ) : (
+                <select
+                  className="field mt-2"
+                  required
+                  value={form.position}
+                  onInvalid={(event) =>
+                    event.currentTarget.setCustomValidity(
+                      "Position / Designation is required.",
+                    )
+                  }
+                  onChange={(event) => {
+                    event.currentTarget.setCustomValidity("");
+                    setForm({
+                      ...form,
+                      position: event.target.value,
+                      customPosition: "",
+                    });
+                  }}
+                >
+                  <option value="">Select position / designation</option>
+                  {FACULTY_POSITIONS.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
+                    </option>
+                  ))}
+                  <option value={OTHER_POSITION}>{OTHER_POSITION}</option>
+                </select>
+              )}
+            </label>
+          )}
           <label className="text-sm font-semibold">
             Official HAU Email
             <input
@@ -131,11 +234,15 @@ export function SecuritySettings() {
       return;
     }
     if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(passwords.newPassword)) {
-      setValidationError("Password must be at least 8 characters and include one uppercase letter and one number.");
+      setValidationError(
+        "Password must be at least 8 characters and include one uppercase letter and one number.",
+      );
       return;
     }
     if (passwords.currentPassword === passwords.newPassword) {
-      setValidationError("New password must be different from your current password.");
+      setValidationError(
+        "New password must be different from your current password.",
+      );
       return;
     }
     setSubmitting(true);

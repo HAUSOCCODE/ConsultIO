@@ -14,8 +14,7 @@ const validEmail = (email, domain) => {
   const normalized = normalize(email);
   const emailDomain = normalized.slice(normalized.lastIndexOf("@") + 1);
   return (
-    /^[^\s@]+@[^\s@]+$/.test(normalized) &&
-    emailDomain === normalize(domain)
+    /^[^\s@]+@[^\s@]+$/.test(normalized) && emailDomain === normalize(domain)
   );
 };
 const validPassword = (password) =>
@@ -35,7 +34,7 @@ const publicUser = (user) => ({
   studentId: user.studentId,
   employeeId: user.employeeId,
   program: user.program,
-  department: user.department,
+  position: user.position,
   yearLevel: user.yearLevel,
   office: user.office,
   specialization: user.specialization,
@@ -93,6 +92,12 @@ export async function register(req, res) {
     role === "student" ? (req.body.program || "").trim() : undefined;
   if (role === "student" && !STUDENT_PROGRAMS.includes(program))
     return res.status(400).json({ message: "Please select your program." });
+  const position =
+    role === "faculty" ? (req.body.position || "").trim() : undefined;
+  if (role === "faculty" && !position)
+    return res
+      .status(400)
+      .json({ message: "Position / Designation is required." });
   const user = await User.create({
     name,
     email,
@@ -100,8 +105,7 @@ export async function register(req, res) {
     role,
     [idField]: idValue,
     program,
-    department:
-      role === "faculty" ? (req.body.department || "").trim() : undefined,
+    position,
     registrationStatus: "Pending",
     accountStatus: "Inactive",
   });
@@ -179,7 +183,7 @@ export async function updateProfile(req, res) {
     "name",
     "program",
     "yearLevel",
-    "department",
+    "position",
     "office",
     "specialization",
     "contactNumber",
@@ -189,16 +193,30 @@ export async function updateProfile(req, res) {
       .filter((key) => req.body[key] !== undefined)
       .map((key) => [key, String(req.body[key]).trim()]),
   );
+  if (req.user.role !== "faculty") delete updates.position;
+  if (
+    req.user.role === "faculty" &&
+    req.body.position !== undefined &&
+    !updates.position
+  )
+    return res
+      .status(400)
+      .json({ message: "Position / Designation is required." });
   const user = await User.findByIdAndUpdate(req.user.id, updates, {
     new: true,
     runValidators: true,
   }).select("-password +profilePicture");
-  res.json({ message: "Profile updated successfully.", user: publicUser(user) });
+  res.json({
+    message: "Profile updated successfully.",
+    user: publicUser(user),
+  });
 }
 
 export async function updateProfilePicture(req, res) {
   if (!req.file)
-    return res.status(400).json({ message: "Please select a valid image file." });
+    return res
+      .status(400)
+      .json({ message: "Please select a valid image file." });
   const currentUser = await User.findById(req.user.id).select(
     "+profilePicture",
   );

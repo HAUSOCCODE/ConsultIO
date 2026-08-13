@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { StatusBadge } from "../UI";
 import SupportingDocumentViewer from "./SupportingDocumentViewer";
 import OnlineMeetingDetails from "./OnlineMeetingDetails";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 const dateTime = (value) => new Date(value).toLocaleString();
 const time = (value) =>
@@ -65,7 +66,10 @@ export default function AppointmentRequestDetailsModal({
         <div className="space-y-6 px-5 py-5 sm:px-6">
           <div className="grid min-w-0 gap-6 md:grid-cols-2">
             <DetailSection title="Student Information">
-              <Detail label="Full Name" value={appointment.student?.name} />
+              <Detail
+                label="Full Name"
+                value={formatPersonName(appointment.student?.name)}
+              />
               <Detail
                 label="Official Student Email"
                 value={appointment.student?.email}
@@ -152,7 +156,11 @@ export default function AppointmentRequestDetailsModal({
           </DetailSection>
         </div>
         <footer className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
-          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary w-full sm:w-auto"
+          >
             Close
           </button>
         </footer>
@@ -183,7 +191,9 @@ function Detail({
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : breakAnywhere ? "[overflow-wrap:anywhere]" : "break-words"}`}>
+      <p
+        className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : breakAnywhere ? "[overflow-wrap:anywhere]" : "break-words"}`}
+      >
         {value || "Not available"}
       </p>
     </div>

@@ -9,10 +9,8 @@ import SupportingDocument from "../models/SupportingDocument.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 import { supportingDocumentUpload } from "../middleware/supportingDocumentUpload.js";
 import { logActivity, notify } from "../services/activityService.js";
-import {
-  destroyAsset,
-  uploadBuffer,
-} from "../services/cloudinaryStorage.js";
+import { processExpiredAvailability } from "../services/availabilityExpirationService.js";
+import { destroyAsset, uploadBuffer } from "../services/cloudinaryStorage.js";
 const router = Router();
 router.use(authenticate);
 
@@ -44,7 +42,9 @@ const hydrateLegacyDocuments = async (appointments) => {
   const legacy = await SupportingDocument.find({ _id: { $in: legacyIds } })
     .select("originalName mimeType size createdAt")
     .lean();
-  const byId = new Map(legacy.map((document) => [String(document._id), document]));
+  const byId = new Map(
+    legacy.map((document) => [String(document._id), document]),
+  );
   appointments.forEach((appointment) => {
     appointment.supportingDocuments = (appointment.supportingDocuments || [])
       .map((entry) =>
@@ -110,10 +110,13 @@ router.get("/mine", authorize("student", "faculty"), async (req, res) => {
       ? { student: req.user.id }
       : { faculty: req.user.id };
   const appointments = await Appointment.find(query)
-    .populate("student", "name email studentId program yearLevel +profilePicture")
+    .populate(
+      "student",
+      "name email studentId program yearLevel +profilePicture",
+    )
     .populate(
       "faculty",
-      "name email department specialization office designation +profilePicture",
+      "name email position specialization office +profilePicture",
     )
     .populate(
       "availability",
@@ -259,9 +262,7 @@ router.post(
       }
     } catch (documentError) {
       await Promise.all([
-        ...uploadedAssets.map((asset) =>
-          destroyAsset(asset).catch(() => {}),
-        ),
+        ...uploadedAssets.map((asset) => destroyAsset(asset).catch(() => {})),
         Appointment.deleteOne({ _id: appointment.id }),
       ]);
       throw documentError;
@@ -340,12 +341,15 @@ router.get(
         const check = await fetch(url, { method: "HEAD" });
         if (check.status === 404) {
           if (embedded) {
-            appointment.supportingDocuments = appointment.supportingDocuments.filter(
-              (item) => String(item?._id || item) !== req.params.documentId,
-            );
+            appointment.supportingDocuments =
+              appointment.supportingDocuments.filter(
+                (item) => String(item?._id || item) !== req.params.documentId,
+              );
             await appointment.save();
           }
-          return res.status(404).json({ message: "Document is no longer available." });
+          return res
+            .status(404)
+            .json({ message: "Document is no longer available." });
         }
       } catch {
         // A transient Cloudinary/network failure must not remove valid metadata.
@@ -371,27 +375,41 @@ router.delete(
     const appointment = await Appointment.findById(req.params.id).select(
       "student faculty supportingDocuments",
     );
-    if (!appointment) return res.status(404).json({ message: "Appointment not found." });
+    if (!appointment)
+      return res.status(404).json({ message: "Appointment not found." });
     const allowed =
       req.user.role === "admin" ||
       String(appointment.student) === req.user.id ||
       String(appointment.faculty) === req.user.id;
-    if (!allowed) return res.status(403).json({ message: "Unauthorized for this document." });
+    if (!allowed)
+      return res
+        .status(403)
+        .json({ message: "Unauthorized for this document." });
     const entry = appointment.supportingDocuments.find(
       (document) => String(document?._id || document) === req.params.documentId,
     );
-    if (!entry) return res.status(404).json({ message: "Supporting document not found." });
+    if (!entry)
+      return res
+        .status(404)
+        .json({ message: "Supporting document not found." });
     if (entry?.cloudinaryPublicId) {
       await destroyAsset({
         publicId: entry.cloudinaryPublicId,
         resourceType: entry.resourceType,
       }).catch(() => {});
     } else {
-      const legacy = await SupportingDocument.findById(req.params.documentId)
-        .select("+publicId +resourceType");
+      const legacy = await SupportingDocument.findById(
+        req.params.documentId,
+      ).select("+publicId +resourceType");
       if (legacy?.publicId)
-        await destroyAsset({ publicId: legacy.publicId, resourceType: legacy.resourceType }).catch(() => {});
-      await SupportingDocument.deleteOne({ _id: req.params.documentId, appointment: appointment.id });
+        await destroyAsset({
+          publicId: legacy.publicId,
+          resourceType: legacy.resourceType,
+        }).catch(() => {});
+      await SupportingDocument.deleteOne({
+        _id: req.params.documentId,
+        appointment: appointment.id,
+      });
     }
     appointment.supportingDocuments = appointment.supportingDocuments.filter(
       (document) => String(document?._id || document) !== req.params.documentId,
@@ -427,12 +445,9 @@ router.get(
   },
 );
 router.put("/:id/status", authorize("faculty"), async (req, res) => {
+  await processExpiredAvailability({ facultyId: req.user.id });
   const status = req.body.status;
-  if (
-    !["Approved", "Rejected", "Completed", "Rescheduled"].includes(
-      status,
-    )
-  )
+  if (!["Approved", "Rejected", "Completed", "Rescheduled"].includes(status))
     return res.status(400).json({ message: "Invalid appointment status." });
   const appointment = await Appointment.findOne({
     _id: req.params.id,
@@ -444,6 +459,19 @@ router.put("/:id/status", authorize("faculty"), async (req, res) => {
     return res
       .status(409)
       .json({ message: "This appointment can no longer be updated." });
+  if (
+    status === "Approved" &&
+    !(await Availability.exists({
+      _id: appointment.availability,
+      faculty: req.user.id,
+      isActive: true,
+      endAt: { $gt: new Date() },
+    }))
+  )
+    return res.status(409).json({
+      message:
+        "This consultation schedule has expired or is no longer active. The Student must choose a new schedule.",
+    });
   if (status === "Rescheduled") {
     const slot = await Availability.findOne({
       _id: req.body.availabilityId,
@@ -549,7 +577,8 @@ router.put(
     const reason = (req.body.reason ?? req.body.note ?? "").trim();
     if (reason.length < 5)
       return res.status(400).json({
-        message: "Please provide a meaningful reschedule reason of at least 5 characters.",
+        message:
+          "Please provide a meaningful reschedule reason of at least 5 characters.",
       });
     if (reason.length > 500)
       return res.status(400).json({
@@ -572,9 +601,9 @@ router.put(
       !["Approved", "Rescheduled"].includes(appointment.status) ||
       appointment.startAt <= new Date()
     )
-      return res
-        .status(400)
-        .json({ message: "This appointment is not eligible for rescheduling." });
+      return res.status(400).json({
+        message: "This appointment is not eligible for rescheduling.",
+      });
     appointment.rescheduleRequested = true;
     appointment.rescheduleRequestNote = reason;
     appointment.rescheduleRequestStatus = "Pending";
@@ -604,72 +633,80 @@ router.put(
     });
   },
 );
-router.put("/:id/reschedule-request", authorize("faculty"), async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id))
-    return res.status(400).json({ message: "Invalid appointment ID." });
-  const decision = req.body.decision;
-  if (!["Approved", "Rejected"].includes(decision))
-    return res.status(400).json({ message: "Select a valid reschedule decision." });
-  const decisionNote = (req.body.note || "").trim();
-  if (decisionNote.length > 500)
-    return res.status(400).json({
-      message: "Decision note cannot exceed 500 characters.",
+router.put(
+  "/:id/reschedule-request",
+  authorize("faculty"),
+  async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid appointment ID." });
+    const decision = req.body.decision;
+    if (!["Approved", "Rejected"].includes(decision))
+      return res
+        .status(400)
+        .json({ message: "Select a valid reschedule decision." });
+    const decisionNote = (req.body.note || "").trim();
+    if (decisionNote.length > 500)
+      return res.status(400).json({
+        message: "Decision note cannot exceed 500 characters.",
+      });
+    const appointment = await Appointment.findOne({
+      _id: req.params.id,
+      faculty: req.user.id,
     });
-  const appointment = await Appointment.findOne({
-    _id: req.params.id,
-    faculty: req.user.id,
-  });
-  if (!appointment)
-    return res.status(404).json({ message: "Appointment not found." });
-  if (
-    !appointment.rescheduleRequested ||
-    appointment.rescheduleRequestStatus !== "Pending"
-  )
-    return res.status(409).json({
-      message: "This appointment has no pending reschedule request.",
+    if (!appointment)
+      return res.status(404).json({ message: "Appointment not found." });
+    if (
+      !appointment.rescheduleRequested ||
+      appointment.rescheduleRequestStatus !== "Pending"
+    )
+      return res.status(409).json({
+        message: "This appointment has no pending reschedule request.",
+      });
+    if (!["Approved", "Rescheduled"].includes(appointment.status))
+      return res.status(400).json({
+        message: "This appointment is no longer eligible for rescheduling.",
+      });
+    appointment.rescheduleRequested = false;
+    appointment.rescheduleRequestStatus = decision;
+    appointment.rescheduleReviewedAt = new Date();
+    appointment.rescheduleReviewedBy = req.user.id;
+    appointment.rescheduleDecisionNote = decisionNote;
+    if (decision === "Approved") appointment.status = "Needs Reschedule";
+    await appointment.save();
+    const approved = decision === "Approved";
+    await Promise.all([
+      logActivity(
+        `appointment_reschedule_${decision.toLowerCase()}`,
+        req.user.id,
+        "Appointment",
+        appointment.id,
+      ),
+      notify(
+        appointment.student,
+        "appointment",
+        `Reschedule Request ${decision}`,
+        approved
+          ? "Your faculty member approved your reschedule request. Please select another available consultation schedule."
+          : "Your consultation reschedule request was not approved. Your current consultation schedule remains unchanged.",
+        appointment.id,
+      ),
+    ]);
+    res.json({
+      message: approved
+        ? "Reschedule request approved. The Student can now choose a new schedule."
+        : "Reschedule request rejected. The current schedule remains unchanged.",
+      appointment,
     });
-  if (!["Approved", "Rescheduled"].includes(appointment.status))
-    return res.status(400).json({
-      message: "This appointment is no longer eligible for rescheduling.",
-    });
-  appointment.rescheduleRequested = false;
-  appointment.rescheduleRequestStatus = decision;
-  appointment.rescheduleReviewedAt = new Date();
-  appointment.rescheduleReviewedBy = req.user.id;
-  appointment.rescheduleDecisionNote = decisionNote;
-  if (decision === "Approved") appointment.status = "Needs Reschedule";
-  await appointment.save();
-  const approved = decision === "Approved";
-  await Promise.all([
-    logActivity(
-      `appointment_reschedule_${decision.toLowerCase()}`,
-      req.user.id,
-      "Appointment",
-      appointment.id,
-    ),
-    notify(
-      appointment.student,
-      "appointment",
-      `Reschedule Request ${decision}`,
-      approved
-        ? "Your faculty member approved your reschedule request. Please select another available consultation schedule."
-        : "Your consultation reschedule request was not approved. Your current consultation schedule remains unchanged.",
-      appointment.id,
-    ),
-  ]);
-  res.json({
-    message: approved
-      ? "Reschedule request approved. The Student can now choose a new schedule."
-      : "Reschedule request rejected. The current schedule remains unchanged.",
-    appointment,
-  });
-});
+  },
+);
 router.put("/:id/reschedule", authorize("student"), async (req, res) => {
   if (
     !mongoose.isValidObjectId(req.params.id) ||
     !mongoose.isValidObjectId(req.body.availabilityId)
   )
-    return res.status(400).json({ message: "Invalid appointment or availability ID." });
+    return res
+      .status(400)
+      .json({ message: "Invalid appointment or availability ID." });
   const appointment = await Appointment.findOne({
     _id: req.params.id,
     student: req.user.id,
@@ -687,7 +724,8 @@ router.put("/:id/reschedule", authorize("student"), async (req, res) => {
   });
   if (!slot)
     return res.status(400).json({
-      message: "Select a valid future availability schedule for this faculty member.",
+      message:
+        "Select a valid future availability schedule for this faculty member.",
     });
   const windowMinutes = Math.round((slot.endAt - slot.startAt) / 60000);
   const scheduled = await Appointment.find({
@@ -699,7 +737,10 @@ router.put("/:id/reschedule", authorize("student"), async (req, res) => {
     (total, item) => total + (item.estimatedDurationMinutes || 0),
     0,
   );
-  if (occupiedMinutes + (appointment.estimatedDurationMinutes || 0) > windowMinutes)
+  if (
+    occupiedMinutes + (appointment.estimatedDurationMinutes || 0) >
+    windowMinutes
+  )
     return res.status(409).json({
       message: "This schedule no longer has enough time for your consultation.",
     });

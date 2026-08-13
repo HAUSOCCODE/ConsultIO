@@ -19,6 +19,21 @@ export async function markAllNotificationsRead(req, res) {
   res.json({ message: "All notifications marked as read." });
 }
 
+export async function markAllNotificationsUnread(req, res) {
+  await Notification.updateMany(
+    { recipient: req.user.id, isRead: true },
+    { $set: { isRead: false }, $unset: { readAt: 1 } },
+  );
+  const unreadCount = await Notification.countDocuments({
+    recipient: req.user.id,
+    isRead: false,
+  });
+  res.json({
+    message: "All notifications marked as unread.",
+    unreadCount,
+  });
+}
+
 export async function markNotificationRead(req, res) {
   const notification = await Notification.findOneAndUpdate(
     { _id: req.params.id, recipient: req.user.id },

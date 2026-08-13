@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 export default function UserAvatar({ user, className = "" }) {
   const [failed, setFailed] = useState(false);
@@ -10,7 +11,7 @@ export default function UserAvatar({ user, className = "" }) {
     return (
       <img
         src={source}
-        alt={`${user?.name || "User"} profile`}
+        alt={`${formatPersonName(user?.name) || "User"} profile`}
         onError={() => setFailed(true)}
         className={`${className} object-cover`}
       />

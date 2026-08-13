@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../api/apiClient";
 import PageErrorBoundary from "./PageErrorBoundary";
 import ProfileImagePreview from "./profile/ProfileImagePreview";
+import { formatPersonName } from "../utils/formatPersonName";
 
 export default function RoleLayout({ role, navigation }) {
   const { user, logout } = useAuth();
@@ -16,19 +17,34 @@ export default function RoleLayout({ role, navigation }) {
   const currentPage =
     navigation.find(({ path }) => location.pathname === path)?.label ||
     "Dashboard";
+  const displayName =
+    role === "admin" && user.name === "ConsultIO Administrator"
+      ? "SOCConsult Administrator"
+      : user.name;
   useEffect(() => setOpen(false), [location.pathname]);
   useEffect(() => {
     const load = () =>
       api("/notifications")
         .then((data) => setUnread(data.unreadCount))
         .catch(() => {});
+    const handleNotificationsUpdated = (event) => {
+      const nextUnreadCount = Number(event.detail?.unreadCount);
+      if (Number.isFinite(nextUnreadCount)) setUnread(nextUnreadCount);
+      else load();
+    };
     load();
-    window.addEventListener("notifications:updated", load);
+    window.addEventListener(
+      "notifications:updated",
+      handleNotificationsUpdated,
+    );
     window.addEventListener("focus", load);
     const timer = setInterval(load, 15000);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("notifications:updated", load);
+      window.removeEventListener(
+        "notifications:updated",
+        handleNotificationsUpdated,
+      );
       window.removeEventListener("focus", load);
     };
   }, []);
@@ -59,7 +75,9 @@ export default function RoleLayout({ role, navigation }) {
               className="h-11 w-11 shrink-0 rounded-xl bg-gold-400 font-extrabold text-maroon-900 shadow-md"
             />
             <div className="min-w-0">
-              <p className="truncate font-semibold">{user.name}</p>
+              <p className="truncate font-semibold">
+                {formatPersonName(displayName)}
+              </p>
               <p className="mt-0.5 text-sm font-medium text-white">
                 {role === "admin"
                   ? "Admin Portal"

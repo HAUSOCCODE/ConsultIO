@@ -6,6 +6,7 @@ export const StatusBadge = ({ status }) => {
     Completed: "bg-blue-100 text-blue-800",
     Rejected: "bg-red-100 text-red-700",
     Inactive: "bg-slate-200 text-slate-700",
+    Expired: "bg-slate-200 text-slate-600",
     Cancelled: "bg-slate-200 text-slate-700",
     Rescheduled: "bg-purple-100 text-purple-800",
     "Needs Reschedule": "bg-amber-100 text-amber-800",
@@ -56,7 +57,9 @@ export function Modal({ title, children, onClose, actions }) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
-        <h2 className="break-words text-xl font-bold text-maroon-900">{title}</h2>
+        <h2 className="break-words text-xl font-bold text-maroon-900">
+          {title}
+        </h2>
         <div className="mt-4 text-sm text-slate-600">{children}</div>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {actions}

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
-import { EmptyState, ErrorState, Loading } from "../../components/UI";
+import {
+  EmptyState,
+  ErrorState,
+  Loading,
+  StatusBadge,
+} from "../../components/UI";
 import { useToast } from "../../context/ToastContext";
 
 const emptyForm = {
@@ -67,6 +72,13 @@ export default function ManageAvailability() {
 
   useEffect(() => {
     void load();
+    const refresh = () => void load();
+    const interval = window.setInterval(refresh, 20000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
   const resetForm = () => {
@@ -399,6 +411,12 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
     day: "numeric",
   };
   const timeOptions = { hour: "numeric", minute: "2-digit" };
+  const expired = item.status === "expired";
+  const statusLabel = expired
+    ? "Expired"
+    : item.isActive
+      ? "Active"
+      : "Inactive";
   return (
     <article className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <p className="font-bold text-maroon-900">
@@ -415,26 +433,29 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
           ? item.meetingPlatform || "Meeting platform not provided"
           : item.location || "Location not provided"}
       </p>
-      <p
-        className={`mt-3 text-xs font-bold ${item.isActive ? "text-green-700" : "text-slate-500"}`}
-      >
-        Status: {item.isActive ? "Active" : "Inactive"}
-      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-xs font-bold text-slate-500">Status:</span>
+        <StatusBadge status={statusLabel} />
+      </div>
       <div className="mt-4 flex flex-wrap gap-4">
-        <button
-          type="button"
-          onClick={() => onEdit(item)}
-          className="text-sm font-bold text-blue-700"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => onToggle(item)}
-          className="text-sm font-bold text-maroon-800"
-        >
-          {item.isActive ? "Deactivate" : "Activate"}
-        </button>
+        {!expired && (
+          <>
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="text-sm font-bold text-blue-700"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggle(item)}
+              className="text-sm font-bold text-maroon-800"
+            >
+              {item.isActive ? "Deactivate" : "Activate"}
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={() => onRemove(item._id)}

@@ -120,7 +120,9 @@ export async function getUser(req, res) {
   const user = await User.findOne({
     _id: req.params.id,
     role: { $in: managedRoles },
-  }).select("-password +profilePicture").lean();
+  })
+    .select("-password +profilePicture")
+    .lean();
   if (!user) return res.status(404).json({ message: "User not found." });
   res.json({ user: withProfileUrl(user) });
 }
@@ -179,10 +181,20 @@ export async function updateUserStatus(req, res) {
   });
 }
 export async function getAdminAppointments(_req, res) {
-  const appointments = await Appointment.find()
+  const records = await Appointment.find()
     .populate("student", "name email program")
-    .populate("faculty", "name email department")
-    .sort({ createdAt: -1 });
+    .populate("faculty", "name email position")
+    .populate("availability", "meetingPlatform +meetingLink")
+    .sort({ createdAt: -1 })
+    .lean();
+  const appointments = records.map(({ availability, ...appointment }) => ({
+    ...appointment,
+    availability: availability?._id || availability,
+    meetingPlatform:
+      availability?.meetingPlatform ||
+      (appointment.consultationMode === "Online" ? appointment.location : ""),
+    meetingLink: availability?.meetingLink || "",
+  }));
   res.json({ appointments });
 }
 export async function changeAdminPassword(req, res) {

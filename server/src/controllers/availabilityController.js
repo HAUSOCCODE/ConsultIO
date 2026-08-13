@@ -3,6 +3,10 @@ import Appointment from "../models/Appointment.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 import { logActivity, notify } from "../services/activityService.js";
+import {
+  availabilityStatus,
+  processExpiredAvailability,
+} from "../services/availabilityExpirationService.js";
 
 const validateSchedule = ({ startAt, endAt }) => {
   if (!Number.isFinite(startAt.getTime()) || !Number.isFinite(endAt.getTime()))
@@ -59,18 +63,20 @@ const scheduleShape = (availability) => ({
 });
 
 export const getAvailableFaculty = async (_req, res) => {
+  await processExpiredAvailability();
+  const now = new Date();
   const faculty = await User.find({
     role: "faculty",
     registrationStatus: "Approved",
     accountStatus: "Active",
   }).select(
-    "name email employeeId department specialization office designation +profilePicture",
+    "name email employeeId position specialization office +profilePicture",
   );
   const ids = faculty.map((item) => item.id);
   const availability = await Availability.find({
     faculty: { $in: ids },
     isActive: true,
-    endAt: { $gt: new Date() },
+    endAt: { $gt: now },
   });
   const counts = Object.fromEntries(faculty.map((item) => [item.id, 0]));
   const modes = Object.fromEntries(faculty.map((item) => [item.id, new Set()]));
@@ -92,10 +98,12 @@ export const getAvailableFaculty = async (_req, res) => {
 };
 
 export const getFacultyAvailability = async (req, res) => {
+  await processExpiredAvailability({ facultyId: req.params.facultyId });
+  const now = new Date();
   const schedules = await Availability.find({
     faculty: req.params.facultyId,
     isActive: true,
-    endAt: { $gt: new Date() },
+    endAt: { $gt: now },
   }).sort({ startAt: 1 });
   const activeRequests =
     req.user.role === "student"
@@ -124,15 +132,35 @@ export const getFacultyAvailability = async (req, res) => {
   });
 };
 
-export const getMyAvailability = async (req, res) =>
-  res.json({
-    availability: await Availability.find({ faculty: req.user.id })
-      .select("+meetingLink")
-      .sort({ startAt: 1 }),
-  });
+export const getMyAvailability = async (req, res) => {
+  await processExpiredAvailability({ facultyId: req.user.id });
+  const now = new Date();
+  const availability = await Availability.find({ faculty: req.user.id })
+    .select("+meetingLink")
+    .lean();
+  const shaped = availability
+    .map((schedule) => ({
+      ...schedule,
+      status: availabilityStatus(schedule, now),
+    }))
+    .sort((left, right) => {
+      const rank = { active: 0, inactive: 1, expired: 2 };
+      const rankDifference = rank[left.status] - rank[right.status];
+      if (rankDifference) return rankDifference;
+      return left.status === "expired"
+        ? new Date(right.startAt) - new Date(left.startAt)
+        : new Date(left.startAt) - new Date(right.startAt);
+    });
+  res.json({ availability: shaped });
+};
 
 export const getAppointmentRequestSchedules = async (req, res) => {
-  const schedules = await Availability.find({ faculty: req.user.id })
+  await processExpiredAvailability({ facultyId: req.user.id });
+  const now = new Date();
+  const schedules = await Availability.find({
+    faculty: req.user.id,
+    endAt: { $gt: now },
+  })
     .select("startAt endAt mode location meetingPlatform isActive")
     .sort({ startAt: 1 })
     .lean();
@@ -147,17 +175,41 @@ export const getAppointmentRequestSchedules = async (req, res) => {
     {
       $group: {
         _id: "$availability",
-        pendingCount: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
-        approvedCount: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, 1, 0] } },
-        rejectedCount: { $sum: { $cond: [{ $eq: ["$status", "Rejected"] }, 1, 0] } },
+        pendingCount: {
+          $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] },
+        },
+        approvedCount: {
+          $sum: { $cond: [{ $eq: ["$status", "Approved"] }, 1, 0] },
+        },
+        rejectedCount: {
+          $sum: { $cond: [{ $eq: ["$status", "Rejected"] }, 1, 0] },
+        },
         pendingEstimatedMinutes: {
-          $sum: { $cond: [{ $eq: ["$status", "Pending"] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+          $sum: {
+            $cond: [
+              { $eq: ["$status", "Pending"] },
+              { $ifNull: ["$estimatedDurationMinutes", 0] },
+              0,
+            ],
+          },
         },
         approvedEstimatedMinutes: {
-          $sum: { $cond: [{ $eq: ["$status", "Approved"] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+          $sum: {
+            $cond: [
+              { $eq: ["$status", "Approved"] },
+              { $ifNull: ["$estimatedDurationMinutes", 0] },
+              0,
+            ],
+          },
         },
         totalEstimatedMinutes: {
-          $sum: { $cond: [{ $in: ["$status", ["Pending", "Approved"]] }, { $ifNull: ["$estimatedDurationMinutes", 0] }, 0] },
+          $sum: {
+            $cond: [
+              { $in: ["$status", ["Pending", "Approved"]] },
+              { $ifNull: ["$estimatedDurationMinutes", 0] },
+              0,
+            ],
+          },
         },
       },
     },
@@ -183,22 +235,34 @@ export const getAppointmentRequestSchedules = async (req, res) => {
 export const getAvailabilityDetails = async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id))
     return res.status(400).json({ message: "Invalid availability ID." });
+  await processExpiredAvailability({ facultyId: req.user.id });
   const schedule = await Availability.findOne({
     _id: req.params.id,
     faculty: req.user.id,
   }).select("+meetingLink");
   if (!schedule)
     return res.status(404).json({ message: "Availability not found." });
+  if (availabilityStatus(schedule) === "expired")
+    return res.status(409).json({
+      message:
+        "This availability has expired and can no longer manage requests.",
+    });
   const appointments = await Appointment.find({
     availability: schedule.id,
     faculty: req.user.id,
     status: { $in: ["Pending", "Approved", "Rejected"] },
   })
-    .populate("student", "name email studentId program yearLevel +profilePicture")
+    .populate(
+      "student",
+      "name email studentId program yearLevel +profilePicture",
+    )
     .sort({ startAt: 1, createdAt: 1 });
   const safe = appointments.map((appointment) => {
     const value = appointment.toObject();
-    if (value.student?.profilePicture && typeof value.student.profilePicture !== "string")
+    if (
+      value.student?.profilePicture &&
+      typeof value.student.profilePicture !== "string"
+    )
       value.student.profilePicture = value.student.profilePicture.url;
     value.supportingDocuments = (value.supportingDocuments || [])
       .filter((document) => document?.originalName)
@@ -213,9 +277,15 @@ export const getAvailabilityDetails = async (req, res) => {
   });
   res.json({
     schedule,
-    pendingRequests: safe.filter((appointment) => appointment.status === "Pending"),
-    approvedStudents: safe.filter((appointment) => appointment.status === "Approved"),
-    rejectedRequests: safe.filter((appointment) => appointment.status === "Rejected"),
+    pendingRequests: safe.filter(
+      (appointment) => appointment.status === "Pending",
+    ),
+    approvedStudents: safe.filter(
+      (appointment) => appointment.status === "Approved",
+    ),
+    rejectedRequests: safe.filter(
+      (appointment) => appointment.status === "Rejected",
+    ),
   });
 };
 
@@ -224,7 +294,9 @@ export const requestFacultyReschedule = async (req, res) => {
     !mongoose.isValidObjectId(req.params.id) ||
     !mongoose.isValidObjectId(req.params.appointmentId)
   )
-    return res.status(400).json({ message: "Invalid schedule or appointment ID." });
+    return res
+      .status(400)
+      .json({ message: "Invalid schedule or appointment ID." });
   const schedule = await Availability.findOne({
     _id: req.params.id,
     faculty: req.user.id,
@@ -237,10 +309,13 @@ export const requestFacultyReschedule = async (req, res) => {
     faculty: req.user.id,
   });
   if (!appointment)
-    return res.status(404).json({ message: "Appointment not found for this schedule." });
+    return res
+      .status(404)
+      .json({ message: "Appointment not found for this schedule." });
   if (!["Pending", "Approved", "Rescheduled"].includes(appointment.status))
     return res.status(400).json({
-      message: "Only a pending, approved, or scheduled appointment can be rescheduled.",
+      message:
+        "Only a pending, approved, or scheduled appointment can be rescheduled.",
     });
   appointment.status = "Needs Reschedule";
   appointment.responseNote = (req.body.note || "").trim();
@@ -267,7 +342,8 @@ export const requestFacultyReschedule = async (req, res) => {
     ),
   ]);
   res.json({
-    message: "The student was removed from this schedule and notified to choose a new schedule.",
+    message:
+      "The student was removed from this schedule and notified to choose a new schedule.",
     appointment,
   });
 };
@@ -311,12 +387,17 @@ export const createAvailability = async (req, res) => {
 };
 
 export const updateAvailability = async (req, res) => {
+  await processExpiredAvailability({ facultyId: req.user.id });
   const schedule = await Availability.findOne({
     _id: req.params.id,
     faculty: req.user.id,
   }).select("+meetingLink");
   if (!schedule)
     return res.status(404).json({ message: "Availability not found." });
+  if (availabilityStatus(schedule) === "expired")
+    return res.status(409).json({
+      message: "Expired availability cannot be edited or reactivated.",
+    });
   if (req.body.startAt || req.body.endAt) {
     const startAt = new Date(req.body.startAt || schedule.startAt);
     const endAt = new Date(req.body.endAt || schedule.endAt);

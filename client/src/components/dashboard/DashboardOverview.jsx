@@ -5,6 +5,7 @@ import { api } from "../../api/apiClient";
 import { EmptyState, Loading, StatusBadge } from "../UI";
 import { useAuth } from "../../context/AuthContext";
 import { getAppointmentDisplayStatus } from "../../utils/appointmentStatus";
+import { formatPersonName } from "../../utils/formatPersonName";
 const titles = {
   totalStudents: "Total Students",
   totalFaculty: "Total Faculty",
@@ -46,9 +47,11 @@ export default function DashboardOverview({
         .catch((e) => active && setError(e.message));
     load();
     const id = setInterval(load, 30000);
+    window.addEventListener("notifications:updated", load);
     return () => {
       active = false;
       clearInterval(id);
+      window.removeEventListener("notifications:updated", load);
     };
   }, [endpoint]);
   if (error)
@@ -63,8 +66,8 @@ export default function DashboardOverview({
     <div className="w-full min-w-0 space-y-7">
       <section className="w-full min-w-0 rounded-2xl bg-[#72182A] p-5 text-white shadow-sm sm:p-8">
         <p className="eyebrow !text-gold-300">Welcome back</p>
-        <h1 className="mt-2 break-words font-display text-2xl font-bold sm:text-4xl">
-          Hello, {user.name}
+        <h1 className="mt-2 max-w-full whitespace-normal break-normal font-sans text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] sm:text-[2.5rem] lg:text-[2.875rem]">
+          Hello, {formatPersonName(user.name)}
         </h1>
         <p className="mt-2 text-sm text-slate-100">
           Here is the latest activity from your SOCConsult workspace.
@@ -78,7 +81,9 @@ export default function DashboardOverview({
           </Link>
         )}
       </section>
-      <section className={`grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:grid-cols-3 ${statGrid === "faculty" ? "xl:grid-cols-5" : statGrid === "student" ? "xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-4"}`}>
+      <section
+        className={`grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:grid-cols-3 ${statGrid === "faculty" ? "xl:grid-cols-5" : statGrid === "student" ? "xl:grid-cols-4" : "xl:grid-cols-3 2xl:grid-cols-4"}`}
+      >
         {Object.entries(data.stats || {})
           .filter(([key]) => !excludedStats.includes(key))
           .map(([key, value]) => (
@@ -111,7 +116,9 @@ export default function DashboardOverview({
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="break-words text-lg font-bold text-slate-900">{recentTitle}</h2>
+          <h2 className="break-words text-lg font-bold text-slate-900">
+            {recentTitle}
+          </h2>
           {recentLink && (
             <Link
               className="text-sm font-bold text-maroon-800"
@@ -132,10 +139,17 @@ export default function DashboardOverview({
               >
                 <div className="min-w-0">
                   <p className="break-words font-semibold">
-                    {item.name || item.student?.name || item.subject}
+                    {item.name
+                      ? formatPersonName(item.name)
+                      : item.student?.name
+                        ? formatPersonName(item.student.name)
+                        : item.subject}
                   </p>
                   <p className="[overflow-wrap:anywhere] text-sm text-slate-500">
-                    {item.email || item.faculty?.name || item.student?.email}
+                    {item.email ||
+                      (item.faculty?.name
+                        ? formatPersonName(item.faculty.name)
+                        : item.student?.email)}
                   </p>
                 </div>
                 <StatusBadge

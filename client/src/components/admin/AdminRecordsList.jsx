@@ -1,147 +1,291 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading, StatusBadge } from "../UI";
-import { useToast } from "../../context/ToastContext";
-export default function DataPage({ type, title }) {
-  const toast = useToast();
-  const [data, setData] = useState(null);
+import Pagination from "../Pagination";
+import FacultyAppointmentDetailsModal from "../appointments/FacultyAppointmentDetailsModal";
+import { formatPersonName } from "../../utils/formatPersonName";
+
+const APPOINTMENTS_PER_PAGE = 6;
+
+const dateLabel = (value) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Not available";
+};
+
+const timeLabel = (value) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : "Not available";
+};
+
+export default function AdminRecordsList({ title }) {
+  const [appointments, setAppointments] = useState(null);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [details, setDetails] = useState(null);
+
   const load = () => {
-    const path =
-      type === "users"
-        ? "/admin/users"
-        : type === "adminAppointments"
-          ? "/admin/appointments"
-          : null;
-    if (!path) {
-      setData([]);
-      return;
-    }
-    api(path)
-      .then((d) => setData(d.users || d.appointments || []))
+    setError("");
+    return api("/admin/appointments")
+      .then((data) =>
+        setAppointments(
+          Array.isArray(data?.appointments) ? data.appointments : [],
+        ),
+      )
       .catch(() =>
-        setError(`Unable to load ${title.toLowerCase()}. Please try again.`),
+        setError("Unable to load appointments management. Please try again."),
       );
   };
-  useEffect(load, [type, title]);
+
+  useEffect(() => {
+    void load();
+    const refresh = () => void load();
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 20000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const totalItems = appointments?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / APPOINTMENTS_PER_PAGE));
+  const validPage = Math.min(currentPage, totalPages);
+  const pageAppointments = (appointments || []).slice(
+    (validPage - 1) * APPOINTMENTS_PER_PAGE,
+    validPage * APPOINTMENTS_PER_PAGE,
+  );
+  const blankRows = APPOINTMENTS_PER_PAGE - pageAppointments.length;
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   if (error)
     return (
       <ErrorState
         message={error}
         onRetry={() => {
-          setError("");
-          setData(null);
-          load();
+          setAppointments(null);
+          void load();
         }}
       />
     );
-  if (data === null) return <Loading />;
-  const toggle = async (item) => {
-    try {
-      const status = item.accountStatus === "Active" ? "Inactive" : "Active";
-      const response = await api(`/admin/users/${item._id}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ accountStatus: status }),
-      });
-      setData(
-        data.map((x) =>
-          x._id === item._id ? { ...x, accountStatus: status } : x,
-        ),
-      );
-      toast.success(response.message || `Account ${status.toLowerCase()}.`);
-    } catch (e) {
-      toast.error(e.message || "Unable to update the account.");
-    }
-  };
+  if (appointments === null) return <Loading />;
+
   return (
-    <div className="w-full min-w-0 space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">
-          {data.length
-            ? "Current records from MongoDB."
-            : "This module is ready for data as activity is created."}
+          Review consultation appointments and their current status.
         </p>
       </div>
-      {data.length === 0 ? (
-        <EmptyState
-          title={
-            type === "adminAppointments"
-              ? "No appointments found."
-              : `No ${title.toLowerCase()} available`
-          }
-        />
+
+      {appointments.length === 0 ? (
+        <EmptyState title="No appointments found." />
       ) : (
-        <div className="space-y-3">
-          {data.map((x) => (
-            <article key={x._id} className="w-full min-w-0 max-w-full rounded-2xl border bg-white p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="break-words font-bold">
-                    {x.name || x.subject || x.action}
-                  </p>
-                  <p className="mt-1 [overflow-wrap:anywhere] text-sm text-slate-500">
-                    {x.email ||
-                      `${x.student?.name || ""} ${x.faculty?.name ? "→ " + x.faculty.name : ""}` ||
-                      new Date(x.createdAt).toLocaleString()}
-                  </p>
-                  {type === "adminAppointments" && (
-                    <div className="mt-2 space-y-1 text-sm text-slate-600">
-                      <p className="break-words">
-                        Faculty availability:{" "}
-                        {x.startAt
-                          ? new Date(x.startAt).toLocaleString()
-                          : "Date unavailable"}{" "}
-                        –{" "}
-                        {x.endAt
-                          ? new Date(x.endAt).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })
-                          : "End time unavailable"}
-                      </p>
-                      <p className="break-words">
-                        Estimated duration:{" "}
-                        {x.estimatedDurationMinutes
-                          ? `${x.estimatedDurationMinutes} minutes`
-                          : "Not provided"}{" "}
-                        · {x.consultationMode || "Online"} ·{" "}
-                        {x.location || "Location to be confirmed"}
-                      </p>
-                    </div>
-                  )}
-                  {type === "adminAppointments" && x.reason && (
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">
-                      Reason: {x.reason}
-                    </p>
-                  )}
-                  {type === "adminAppointments" && (
-                    <p className="mt-1 text-xs text-slate-500">
-                      Created{" "}
-                      {x.createdAt
-                        ? new Date(x.createdAt).toLocaleString()
-                        : "—"}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  {(x.accountStatus || x.status) && (
-                    <StatusBadge status={x.accountStatus || x.status} />
-                  )}{" "}
-                  {type === "users" && (
-                    <button
-                      onClick={() => toggle(x)}
-                      className="rounded-lg border px-3 py-2 text-sm font-bold"
+        <>
+          <div className="grid gap-4 lg:hidden">
+            {pageAppointments.map((appointment) => (
+              <article
+                key={appointment._id}
+                className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p
+                      className="truncate font-bold text-slate-900"
+                      title={appointment.subject}
                     >
-                      {x.accountStatus === "Active" ? "Deactivate" : "Activate"}
-                    </button>
-                  )}
+                      {appointment.subject || "Consultation"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {dateLabel(appointment.startAt)} ·{" "}
+                      {timeLabel(appointment.startAt)} –{" "}
+                      {timeLabel(appointment.endAt)}
+                    </p>
+                  </div>
+                  <StatusBadge status={appointment.status} />
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+                <dl className="mt-4 grid min-w-0 grid-cols-2 gap-3 text-sm">
+                  <MobileDetail
+                    label="Student"
+                    value={formatPersonName(appointment.student?.name)}
+                  />
+                  <MobileDetail
+                    label="Faculty"
+                    value={formatPersonName(appointment.faculty?.name)}
+                  />
+                  <MobileDetail
+                    label="Mode"
+                    value={appointment.consultationMode || "Online"}
+                  />
+                  <MobileDetail
+                    label="Estimated Time"
+                    value={
+                      appointment.estimatedDurationMinutes
+                        ? `${appointment.estimatedDurationMinutes} min`
+                        : null
+                    }
+                  />
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => setDetails(appointment)}
+                  className="mt-4 w-full rounded-lg border border-maroon-200 px-3 py-2 text-sm font-bold text-maroon-800"
+                >
+                  View Details
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden max-w-full overflow-x-auto rounded-t-2xl border border-slate-200 bg-white lg:block">
+            <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[11%]" />
+                <col className="w-[16%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[16%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+              </colgroup>
+              <thead className="bg-maroon-800 text-xs text-white">
+                <tr>
+                  {[
+                    "Date",
+                    "Subject / Topic",
+                    "Student",
+                    "Faculty",
+                    "Time",
+                    "Mode",
+                    "Estimated Time",
+                    "Status",
+                    "Action",
+                  ].map((heading) => (
+                    <th key={heading} className="px-3 py-4 font-bold">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pageAppointments.map((appointment) => (
+                  <tr
+                    key={appointment._id}
+                    className="h-[76px] border-t border-slate-200 bg-white"
+                  >
+                    <td className="px-3 py-3 text-xs">
+                      {dateLabel(appointment.startAt)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <p
+                        className="truncate font-semibold"
+                        title={appointment.subject}
+                      >
+                        {appointment.subject || "—"}
+                      </p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <p
+                        className="truncate"
+                        title={formatPersonName(appointment.student?.name)}
+                      >
+                        {formatPersonName(appointment.student?.name) ||
+                          "Unavailable"}
+                      </p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <p
+                        className="truncate"
+                        title={formatPersonName(appointment.faculty?.name)}
+                      >
+                        {formatPersonName(appointment.faculty?.name) ||
+                          "Unavailable"}
+                      </p>
+                    </td>
+                    <td className="px-3 py-3 text-xs whitespace-nowrap">
+                      {timeLabel(appointment.startAt)} –{" "}
+                      {timeLabel(appointment.endAt)}
+                    </td>
+                    <td className="px-3 py-3">
+                      {appointment.consultationMode || "Online"}
+                    </td>
+                    <td className="px-3 py-3">
+                      {appointment.estimatedDurationMinutes
+                        ? `${appointment.estimatedDurationMinutes} min`
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-3">
+                      <StatusBadge status={appointment.status} />
+                    </td>
+                    <td className="px-3 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setDetails(appointment)}
+                        className="text-xs font-bold text-maroon-800 hover:underline"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {Array.from({ length: blankRows }, (_, index) => (
+                  <tr
+                    key={`placeholder-${index}`}
+                    aria-hidden="true"
+                    className="h-[76px] border-t border-slate-200 bg-white"
+                  >
+                    <td colSpan={9} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="overflow-hidden rounded-b-2xl border border-t-0 border-slate-200">
+            <Pagination
+              currentPage={validPage}
+              totalItems={appointments.length}
+              itemsPerPage={APPOINTMENTS_PER_PAGE}
+              itemLabel="appointments"
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </>
       )}
+
+      {details && (
+        <FacultyAppointmentDetailsModal
+          appointment={details}
+          onClose={() => setDetails(null)}
+          showFacultyInfo
+        />
+      )}
+    </div>
+  );
+}
+
+function MobileDetail({ label, value }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+      <dd
+        className="mt-1 truncate font-medium text-slate-800"
+        title={value || undefined}
+      >
+        {value || "Not available"}
+      </dd>
     </div>
   );
 }

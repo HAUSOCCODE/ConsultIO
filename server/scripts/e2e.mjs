@@ -90,7 +90,7 @@ try {
         name: "ConsultIO Invalid Faculty",
         email: invalidFacultyEmail,
         employeeId: `QA-INVALID-${stamp}`,
-        department: "School of Computing",
+        position: "Professor",
         password,
       },
     });
@@ -107,7 +107,7 @@ try {
       email: facultyEmail,
       name: "ConsultIO QA Faculty",
       employeeId: `QA-F-${stamp}`,
-      department: "School of Computing",
+      position: "Professor",
     },
     {
       role: "student",
@@ -347,7 +347,15 @@ try {
   bookingForm.append("reason", "End-to-end workflow verification");
   bookingForm.append(
     "documents",
-    new Blob(["image-content"], { type: "image/png" }),
+    new Blob(
+      [
+        Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      ],
+      { type: "image/png" },
+    ),
     "qa-image.png",
   );
   bookingForm.append(
@@ -767,7 +775,10 @@ try {
     {
       method: "PUT",
       token: facultyLogin.data.token,
-      body: { decision: "Rejected", note: "The original schedule is required." },
+      body: {
+        decision: "Rejected",
+        note: "The original schedule is required.",
+      },
     },
   );
   const rejectedReschedule = await Appointment.findById(
@@ -777,7 +788,8 @@ try {
     facultyRejects.status === 200 &&
       rejectedReschedule.status === "Approved" &&
       rejectedReschedule.rescheduleRequestStatus === "Rejected" &&
-      String(rejectedReschedule.availability) === schedule.data.availability._id,
+      String(rejectedReschedule.availability) ===
+        schedule.data.availability._id,
     "Faculty rejection keeps the approved appointment on its current schedule",
   );
   check(
@@ -918,6 +930,87 @@ try {
       (await Appointment.findById(unresolvedPastAppointment.id)).status ===
         "No Show",
     "Faculty can resolve a past Approved consultation as No Show",
+  );
+
+  const expiredEndAt = new Date(Date.now() - 60 * 1000);
+  const expiredStartAt = new Date(expiredEndAt.getTime() - 60 * 60 * 1000);
+  const expiredSchedule = await Availability.create({
+    faculty: facultyLogin.data.user.id,
+    startAt: expiredStartAt,
+    endAt: expiredEndAt,
+    mode: "Online",
+    meetingPlatform: "Google Meet",
+    isActive: true,
+  });
+  const [expiredPending, expiredApproved] = await Appointment.create([
+    {
+      student: studentLogin.data.user.id,
+      faculty: facultyLogin.data.user.id,
+      availability: expiredSchedule.id,
+      startAt: expiredStartAt,
+      endAt: expiredEndAt,
+      estimatedDurationMinutes: 10,
+      subject: "Expired Pending Consultation",
+      reason: "Verify expired pending request handling.",
+      status: "Pending",
+    },
+    {
+      student: studentLogin.data.user.id,
+      faculty: facultyLogin.data.user.id,
+      availability: expiredSchedule.id,
+      startAt: expiredStartAt,
+      endAt: expiredEndAt,
+      estimatedDurationMinutes: 10,
+      subject: "Expired Approved Consultation",
+      reason: "Verify approved outcome remains Faculty-controlled.",
+      status: "Approved",
+    },
+  ]);
+  const expiredMine = await request("/availability/mine", {
+    token: facultyLogin.data.token,
+  });
+  check(
+    expiredMine.status === 200 &&
+      expiredMine.data.availability.find(
+        (item) => item._id === expiredSchedule.id,
+      )?.status === "expired",
+    "expired availability remains visible with derived expired status",
+  );
+  const expiredRequestSchedules = await request(
+    "/availability/request-schedules",
+    { token: facultyLogin.data.token },
+  );
+  check(
+    !expiredRequestSchedules.data.schedules.some(
+      (item) => item._id === expiredSchedule.id,
+    ),
+    "expired availability is excluded from Faculty request schedules",
+  );
+  const expiredStudentSchedules = await request(
+    `/availability/faculty/${facultyLogin.data.user.id}`,
+    { token: studentLogin.data.token },
+  );
+  check(
+    !expiredStudentSchedules.data.schedules.some(
+      (item) => item._id === expiredSchedule.id,
+    ),
+    "expired availability is excluded from Student booking schedules",
+  );
+  check(
+    (await Appointment.findById(expiredPending.id)).status ===
+      "Needs Reschedule" &&
+      (await Appointment.findById(expiredApproved.id)).status === "Approved",
+    "expiration reschedules Pending requests without completing Approved appointments",
+  );
+  await request("/availability/mine", { token: facultyLogin.data.token });
+  check(
+    (await Notification.countDocuments({
+      recipient: facultyLogin.data.user.id,
+      type: "schedule",
+      title: "Consultation Schedule Expired",
+      relatedEntityId: expiredSchedule.id,
+    })) === 1,
+    "expiration notification is created once per Faculty schedule",
   );
 
   const changed = await request("/admin/settings/password", {

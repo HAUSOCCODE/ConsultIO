@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, StatusBadge } from "../../components/UI";
 import { useToast } from "../../context/ToastContext";
+import Pagination from "../../components/Pagination";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 const tabs = [
   "All Users",
@@ -15,6 +17,7 @@ const tabs = [
 ];
 const passwordRule =
   "Password must be at least 8 characters and include one uppercase letter and one number. Spaces are not allowed.";
+const USERS_PER_PAGE = 6;
 
 export default function UserManagement({ initialTab = "All Users" }) {
   const toast = useToast();
@@ -25,6 +28,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [resetTarget, setResetTarget] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const load = () => {
     setError("");
@@ -91,17 +95,6 @@ export default function UserManagement({ initialTab = "All Users" }) {
     }
   };
 
-  if (error) return <ErrorState message={error} onRetry={load} />;
-  if (loading)
-    return (
-      <div className="grid min-h-48 place-items-center">
-        <div className="flex items-center gap-3 text-sm font-semibold text-maroon-800">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-maroon-200 border-t-maroon-800" />
-          Loading users...
-        </div>
-      </div>
-    );
-
   const shown = users.filter(
     (user) =>
       tab === "All Users" ||
@@ -112,6 +105,28 @@ export default function UserManagement({ initialTab = "All Users" }) {
       (tab === "Active" && user.accountStatus === "Active") ||
       (tab === "Inactive" && user.accountStatus === "Inactive"),
   );
+  const totalPages = Math.max(1, Math.ceil(shown.length / USERS_PER_PAGE));
+  const validPage = Math.min(currentPage, totalPages);
+  const pageUsers = shown.slice(
+    (validPage - 1) * USERS_PER_PAGE,
+    validPage * USERS_PER_PAGE,
+  );
+  const blankRows = USERS_PER_PAGE - pageUsers.length;
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (loading)
+    return (
+      <div className="grid min-h-48 place-items-center">
+        <div className="flex items-center gap-3 text-sm font-semibold text-maroon-800">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-maroon-200 border-t-maroon-800" />
+          Loading users...
+        </div>
+      </div>
+    );
   return (
     <div className="min-w-0 space-y-6">
       <div>
@@ -124,7 +139,10 @@ export default function UserManagement({ initialTab = "All Users" }) {
         {tabs.map((name) => (
           <button
             key={name}
-            onClick={() => setTab(name)}
+            onClick={() => {
+              setTab(name);
+              setCurrentPage(1);
+            }}
             className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tab === name ? "bg-maroon-800 text-white" : "border border-slate-200 bg-white"}`}
           >
             {name}
@@ -142,7 +160,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
       ) : (
         <>
           <div className="grid gap-4 lg:hidden">
-            {shown.map((user) => (
+            {pageUsers.map((user) => (
               <article
                 key={user._id}
                 className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
@@ -151,9 +169,9 @@ export default function UserManagement({ initialTab = "All Users" }) {
                   <div className="min-w-0">
                     <p
                       className="break-words font-bold text-slate-900"
-                      title={user.name}
+                      title={formatPersonName(user.name)}
                     >
-                      {user.name || "Unnamed user"}
+                      {formatPersonName(user.name) || "Unnamed user"}
                     </p>
                     <p className="mt-1 break-all text-sm lowercase text-slate-600">
                       {user.email?.toLowerCase()}
@@ -205,14 +223,17 @@ export default function UserManagement({ initialTab = "All Users" }) {
                 </tr>
               </thead>
               <tbody>
-                {shown.map((user) => (
+                {pageUsers.map((user) => (
                   <tr
                     key={user._id}
                     className="border-t border-slate-200 align-top"
                   >
                     <td className="px-3 py-4">
-                      <p className="truncate font-semibold" title={user.name}>
-                        {user.name || "—"}
+                      <p
+                        className="truncate font-semibold"
+                        title={formatPersonName(user.name)}
+                      >
+                        {formatPersonName(user.name) || "—"}
                       </p>
                     </td>
                     <td className="px-3 py-4">
@@ -246,8 +267,26 @@ export default function UserManagement({ initialTab = "All Users" }) {
                     </td>
                   </tr>
                 ))}
+                {Array.from({ length: blankRows }, (_, index) => (
+                  <tr
+                    key={`placeholder-${index}`}
+                    aria-hidden="true"
+                    className="h-[76px] border-t border-slate-200 bg-white"
+                  >
+                    <td colSpan={7} />
+                  </tr>
+                ))}
               </tbody>
             </table>
+          </div>
+          <div className="overflow-hidden rounded-b-2xl border border-t-0 border-slate-200">
+            <Pagination
+              currentPage={validPage}
+              totalItems={shown.length}
+              itemsPerPage={USERS_PER_PAGE}
+              itemLabel="users"
+              onPageChange={setCurrentPage}
+            />
           </div>
         </>
       )}
@@ -333,7 +372,7 @@ function UserActions({ user, onView, onReset, onAction, compact = false }) {
 
 function UserDetails({ user, loading, onClose, onReset, onAction }) {
   const account = [
-    ["Full Name", user.name],
+    ["Full Name", formatPersonName(user.name)],
     [
       user.role === "student"
         ? "Official HAU Student Email"
@@ -364,8 +403,7 @@ function UserDetails({ user, loading, onClose, onReset, onAction }) {
         ]
       : [
           ["Employee ID", user.employeeId],
-          ["Department", user.department],
-          ["Designation / Position", user.designation],
+          ["Position / Designation", user.position || "Position not provided"],
           ["Specialization", user.specialization],
           ["Office Location", user.office],
           ["Contact Number", user.contactNumber],
@@ -391,7 +429,9 @@ function UserDetails({ user, loading, onClose, onReset, onAction }) {
               </span>
             )}
             <div className="min-w-0">
-              <p className="font-bold text-slate-900">{user.name}</p>
+              <p className="font-bold text-slate-900">
+                {formatPersonName(user.name)}
+              </p>
               <p className="break-all text-sm lowercase text-slate-600">
                 {user.email?.toLowerCase()}
               </p>
@@ -497,7 +537,7 @@ function ResetPassword({ user, onClose, onSuccess }) {
   return (
     <Modal
       title="Reset Password"
-      subtitle={`Set a new password for ${user.name}. The existing password cannot be viewed.`}
+      subtitle={`Set a new password for ${formatPersonName(user.name)}. The existing password cannot be viewed.`}
       onClose={onClose}
       compact
     >

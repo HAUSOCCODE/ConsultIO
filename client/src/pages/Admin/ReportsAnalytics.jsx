@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/apiClient";
 import { EmptyState, ErrorState, Loading } from "../../components/UI";
+import { formatPersonName } from "../../utils/formatPersonName";
 export default function ReportsAnalytics() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
@@ -21,8 +22,8 @@ export default function ReportsAnalytics() {
     const rows = [
       ["Student", "Faculty", "Subject", "Date", "Status"],
       ...items.map((x) => [
-        x.student?.name,
-        x.faculty?.name,
+        formatPersonName(x.student?.name),
+        formatPersonName(x.faculty?.name),
         x.subject,
         new Date(x.startAt).toLocaleString(),
         x.status,

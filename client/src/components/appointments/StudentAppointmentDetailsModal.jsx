@@ -8,6 +8,7 @@ import {
   getAppointmentDisplayStatus,
   isAwaitingFacultyUpdate,
 } from "../../utils/appointmentStatus";
+import { formatPersonName } from "../../utils/formatPersonName";
 
 const safeDate = (value, options) => {
   const date = new Date(value);
@@ -99,10 +100,13 @@ export default function StudentAppointmentDetailsModal({
               />
             </Section>
             <Section title="Faculty Information">
-              <Detail label="Faculty Name" value={appointment.faculty?.name} />
               <Detail
-                label="Department"
-                value={appointment.faculty?.department}
+                label="Faculty Name"
+                value={formatPersonName(appointment.faculty?.name)}
+              />
+              <Detail
+                label="Position / Designation"
+                value={appointment.faculty?.position || "Position not provided"}
               />
               <Detail
                 label="Specialization"
@@ -137,7 +141,8 @@ export default function StudentAppointmentDetailsModal({
 
           {isAwaitingFacultyUpdate(appointment) && (
             <p className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
-              The consultation schedule has ended and is awaiting an update from your faculty member.
+              The consultation schedule has ended and is awaiting an update from
+              your faculty member.
             </p>
           )}
 
@@ -231,7 +236,11 @@ export default function StudentAppointmentDetailsModal({
           </Section>
         </div>
         <footer className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
-          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary w-full sm:w-auto"
+          >
             Close
           </button>
         </footer>

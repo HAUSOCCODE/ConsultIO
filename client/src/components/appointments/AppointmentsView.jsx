@@ -14,6 +14,7 @@ import {
 import { useToast } from "../../context/ToastContext";
 import ProfileImagePreview from "../profile/ProfileImagePreview";
 import { useNavigate } from "react-router-dom";
+import { formatPersonName } from "../../utils/formatPersonName";
 const HISTORY_ITEMS_PER_PAGE = 6;
 export default function AppointmentsPage({ filter }) {
   const { user } = useAuth();
@@ -65,7 +66,9 @@ export default function AppointmentsPage({ filter }) {
       else toast.success(d.message);
       setItems((current) =>
         current?.map((appointment) =>
-          appointment._id === id ? { ...appointment, status, ...d.appointment } : appointment,
+          appointment._id === id
+            ? { ...appointment, status, ...d.appointment }
+            : appointment,
         ),
       );
       void load();
@@ -92,7 +95,9 @@ export default function AppointmentsPage({ filter }) {
         appointment.availability?._id || appointment.availability;
       setRescheduleSlots(
         (Array.isArray(data?.schedules) ? data.schedules : []).filter(
-          (slot) => String(slot.availabilityId || slot._id) !== String(currentAvailabilityId),
+          (slot) =>
+            String(slot.availabilityId || slot._id) !==
+            String(currentAvailabilityId),
         ),
       );
       setRescheduleTarget(appointment);
@@ -100,19 +105,21 @@ export default function AppointmentsPage({ filter }) {
       toast.error(requestError.message || "Unable to load schedules.");
     }
   };
-  const chooseNewSchedule = (appointment) => navigate("/student/book", {
-    state: {
-      rescheduleAppointment: {
-        appointmentId: appointment._id,
-        facultyId: appointment.faculty?._id || appointment.faculty,
-        currentAvailabilityId: appointment.availability?._id || appointment.availability,
-        subject: appointment.subject,
-        yearLevel: appointment.yearLevel || appointment.student?.yearLevel,
-        estimatedDurationMinutes: appointment.estimatedDurationMinutes,
-        reason: appointment.reason,
+  const chooseNewSchedule = (appointment) =>
+    navigate("/student/book", {
+      state: {
+        rescheduleAppointment: {
+          appointmentId: appointment._id,
+          facultyId: appointment.faculty?._id || appointment.faculty,
+          currentAvailabilityId:
+            appointment.availability?._id || appointment.availability,
+          subject: appointment.subject,
+          yearLevel: appointment.yearLevel || appointment.student?.yearLevel,
+          estimatedDurationMinutes: appointment.estimatedDurationMinutes,
+          reason: appointment.reason,
+        },
       },
-    },
-  });
+    });
   const cancel = async (id) => {
     try {
       const d = await api(`/appointments/${id}/cancel`, { method: "PUT" });
@@ -141,7 +148,9 @@ export default function AppointmentsPage({ filter }) {
       return;
     }
     if (reason.length < 5) {
-      setRequestError("Please enter a meaningful reason of at least 5 characters.");
+      setRequestError(
+        "Please enter a meaningful reason of at least 5 characters.",
+      );
       return;
     }
     if (reason.length > 500) {
@@ -217,7 +226,9 @@ export default function AppointmentsPage({ filter }) {
   let shown = items;
   if (user.role === "student" && !filter)
     shown = items.filter((x) =>
-      ["Pending", "Approved", "Needs Reschedule", "Rescheduled"].includes(x.status),
+      ["Pending", "Approved", "Needs Reschedule", "Rescheduled"].includes(
+        x.status,
+      ),
     );
   if (filter === "requests")
     shown = items.filter((x) => x.status === "Pending");
@@ -248,9 +259,7 @@ export default function AppointmentsPage({ filter }) {
           ["Approved", "Rescheduled"].includes(item.status) && start >= now
         );
       if (appointmentTab === "Awaiting Update")
-        return (
-          ["Approved", "Rescheduled"].includes(item.status) && end < now
-        );
+        return ["Approved", "Rescheduled"].includes(item.status) && end < now;
       return item.status === appointmentTab;
     });
   }
@@ -331,7 +340,13 @@ export default function AppointmentsPage({ filter }) {
       </div>
       {user.role === "faculty" && !filter && (
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {["Today", "Upcoming", "Awaiting Update", "Completed", "Cancelled"].map((name) => (
+          {[
+            "Today",
+            "Upcoming",
+            "Awaiting Update",
+            "Completed",
+            "Cancelled",
+          ].map((name) => (
             <button
               key={name}
               type="button"
@@ -507,7 +522,10 @@ export default function AppointmentsPage({ filter }) {
               className="max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:max-h-[92vh] sm:p-6"
             >
               <div className="flex items-start justify-between gap-4">
-                <h2 id="request-reschedule-title" className="text-xl font-bold text-maroon-900">
+                <h2
+                  id="request-reschedule-title"
+                  className="text-xl font-bold text-maroon-900"
+                >
                   Request Reschedule
                 </h2>
                 <button
@@ -525,14 +543,38 @@ export default function AppointmentsPage({ filter }) {
                 </button>
               </div>
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="font-bold text-slate-800">Current Consultation</h3>
+                <h3 className="font-bold text-slate-800">
+                  Current Consultation
+                </h3>
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                  <ModalDetail label="Faculty" value={requestTarget.faculty?.name} />
-                  <ModalDetail label="Date" value={new Date(requestTarget.startAt).toLocaleDateString()} />
-                  <ModalDetail label="Time" value={`${formatClock(requestTarget.startAt)} – ${formatClock(requestTarget.endAt)}`} />
-                  <ModalDetail label="Mode" value={requestTarget.consultationMode} />
-                  <ModalDetail label="Location / Meeting Platform" value={requestTarget.meetingPlatform || requestTarget.location} wide />
-                  <ModalDetail label="Subject / Topic" value={requestTarget.subject} wide />
+                  <ModalDetail
+                    label="Faculty"
+                    value={formatPersonName(requestTarget.faculty?.name)}
+                  />
+                  <ModalDetail
+                    label="Date"
+                    value={new Date(requestTarget.startAt).toLocaleDateString()}
+                  />
+                  <ModalDetail
+                    label="Time"
+                    value={`${formatClock(requestTarget.startAt)} – ${formatClock(requestTarget.endAt)}`}
+                  />
+                  <ModalDetail
+                    label="Mode"
+                    value={requestTarget.consultationMode}
+                  />
+                  <ModalDetail
+                    label="Location / Meeting Platform"
+                    value={
+                      requestTarget.meetingPlatform || requestTarget.location
+                    }
+                    wide
+                  />
+                  <ModalDetail
+                    label="Subject / Topic"
+                    value={requestTarget.subject}
+                    wide
+                  />
                 </dl>
               </div>
               <label className="mt-5 block text-sm font-semibold text-slate-700">
@@ -556,12 +598,30 @@ export default function AppointmentsPage({ filter }) {
                 <span>Minimum 5 characters</span>
                 <span>{requestReason.length}/500</span>
               </div>
-              {requestError && <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{requestError}</p>}
+              {requestError && (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  {requestError}
+                </p>
+              )}
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" disabled={requestSubmitting} onClick={() => { setRequestTarget(null); setRequestReason(""); setRequestError(""); }} className="btn-secondary">
+                <button
+                  type="button"
+                  disabled={requestSubmitting}
+                  onClick={() => {
+                    setRequestTarget(null);
+                    setRequestReason("");
+                    setRequestError("");
+                  }}
+                  className="btn-secondary"
+                >
                   Cancel
                 </button>
-                <button type="button" disabled={requestSubmitting} onClick={requestReschedule} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                <button
+                  type="button"
+                  disabled={requestSubmitting}
+                  onClick={requestReschedule}
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   {requestSubmitting ? "Submitting..." : "Submit Request"}
                 </button>
               </div>
@@ -571,10 +631,28 @@ export default function AppointmentsPage({ filter }) {
         )}
       {reviewTarget &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4" onMouseDown={(event) => event.target === event.currentTarget && !reviewSubmitting && setReviewTarget(null)}>
-            <section role="alertdialog" aria-modal="true" aria-labelledby="review-reschedule-title" onMouseDown={(event) => event.stopPropagation()} className="w-full min-w-0 max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6">
-              <h2 id="review-reschedule-title" className="text-xl font-bold text-maroon-900">
-                {reviewTarget.decision === "Approved" ? "Approve Reschedule Request?" : "Reject Reschedule Request?"}
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4"
+            onMouseDown={(event) =>
+              event.target === event.currentTarget &&
+              !reviewSubmitting &&
+              setReviewTarget(null)
+            }
+          >
+            <section
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="review-reschedule-title"
+              onMouseDown={(event) => event.stopPropagation()}
+              className="w-full min-w-0 max-w-lg rounded-2xl bg-white p-4 shadow-2xl sm:p-6"
+            >
+              <h2
+                id="review-reschedule-title"
+                className="text-xl font-bold text-maroon-900"
+              >
+                {reviewTarget.decision === "Approved"
+                  ? "Approve Reschedule Request?"
+                  : "Reject Reschedule Request?"}
               </h2>
               <p className="mt-3 text-sm text-slate-600">
                 {reviewTarget.decision === "Approved"
@@ -584,13 +662,42 @@ export default function AppointmentsPage({ filter }) {
               {reviewTarget.decision === "Rejected" && (
                 <label className="mt-5 block text-sm font-semibold text-slate-700">
                   Optional reason
-                  <textarea maxLength={500} rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} className="field mt-2 resize-y" />
+                  <textarea
+                    maxLength={500}
+                    rows={3}
+                    value={reviewNote}
+                    onChange={(event) => setReviewNote(event.target.value)}
+                    className="field mt-2 resize-y"
+                  />
                 </label>
               )}
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" disabled={reviewSubmitting} onClick={() => { setReviewTarget(null); setReviewNote(""); }} className="btn-secondary">Cancel</button>
-                <button type="button" disabled={reviewSubmitting} onClick={reviewReschedule} className={reviewTarget.decision === "Approved" ? "btn-primary" : "rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white"}>
-                  {reviewSubmitting ? "Saving..." : reviewTarget.decision === "Approved" ? "Approve Reschedule" : "Reject Reschedule"}
+                <button
+                  type="button"
+                  disabled={reviewSubmitting}
+                  onClick={() => {
+                    setReviewTarget(null);
+                    setReviewNote("");
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={reviewSubmitting}
+                  onClick={reviewReschedule}
+                  className={
+                    reviewTarget.decision === "Approved"
+                      ? "btn-primary"
+                      : "rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white"
+                  }
+                >
+                  {reviewSubmitting
+                    ? "Saving..."
+                    : reviewTarget.decision === "Approved"
+                      ? "Approve Reschedule"
+                      : "Reject Reschedule"}
                 </button>
               </div>
             </section>
@@ -729,7 +836,8 @@ export default function AppointmentsPage({ filter }) {
                     <>
                       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                         <h2 className="min-w-0 break-words font-bold text-slate-900">
-                          {x.student?.name || "Student name not provided"}
+                          {formatPersonName(x.student?.name) ||
+                            "Student name not provided"}
                         </h2>
                         <StatusBadge status={x.status} />
                       </div>
@@ -768,91 +876,121 @@ export default function AppointmentsPage({ filter }) {
                   )}
                   {filter !== "requests" && (
                     <>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="min-w-0 break-words font-bold">{x.subject}</h2>
-                    <StatusBadge
-                      status={
-                        user.role === "student"
-                          ? getAppointmentDisplayStatus(x)
-                          : x.status
-                      }
-                    />
-                  </div>
-                  <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-slate-600">
-                    <ProfileImagePreview user={user.role === "student" ? x.faculty : x.student} className="h-9 w-9 rounded-full bg-maroon-800 text-xs font-bold text-white" buttonClassName="rounded-full" />
-                    <p className="min-w-0 break-words">{user.role === "student" ? `Faculty: ${x.faculty?.name}` : `Student: ${x.student?.name}`}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {new Date(x.startAt).toLocaleDateString(undefined, {
-                      weekday: "short",
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Estimated consultation time:{" "}
-                    {x.estimatedDurationMinutes || "Not provided"}
-                    {x.estimatedDurationMinutes ? " minutes" : ""}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {new Date(x.startAt).toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}{" "}
-                    –{" "}
-                    {new Date(x.endAt).toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {x.consultationMode || "Online"} ·{" "}
-                    {x.location || "Location to be confirmed"}
-                  </p>
-                  {user.role === "faculty" && x.student?.program && (
-                    <p className="mt-1 break-words text-sm text-slate-500">
-                      Program: {x.student.program}
-                    </p>
-                  )}
-                  <div className="mt-3 min-w-0 text-sm">
-                    <p className="font-semibold text-slate-700">Reason:</p>
-                    <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-700">
-                      {x.reason}
-                    </p>
-                  </div>
-                  {x.notes && (
-                    <div className="mt-3 min-w-0 text-sm">
-                      <p className="font-semibold text-slate-700">Notes:</p>
-                      <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-600">
-                        {x.notes}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="min-w-0 break-words font-bold">
+                          {x.subject}
+                        </h2>
+                        <StatusBadge
+                          status={
+                            user.role === "student"
+                              ? getAppointmentDisplayStatus(x)
+                              : x.status
+                          }
+                        />
+                      </div>
+                      <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-slate-600">
+                        <ProfileImagePreview
+                          user={user.role === "student" ? x.faculty : x.student}
+                          className="h-9 w-9 rounded-full bg-maroon-800 text-xs font-bold text-white"
+                          buttonClassName="rounded-full"
+                        />
+                        <p className="min-w-0 break-words">
+                          {user.role === "student"
+                            ? `Faculty: ${formatPersonName(x.faculty?.name)}`
+                            : `Student: ${formatPersonName(x.student?.name)}`}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {new Date(x.startAt).toLocaleDateString(undefined, {
+                          weekday: "short",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </p>
-                    </div>
-                  )}
-                  {user.role === "faculty" && x.rescheduleRequested && (
-                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                      <p className="font-bold">Pending Reschedule Request</p>
-                      <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed">Reason: {x.rescheduleRequestNote}</p>
-                      <p className="mt-1 text-xs text-amber-800">Requested: {new Date(x.rescheduleRequestedAt || x.updatedAt).toLocaleString()}</p>
-                    </div>
-                  )}
-                  {user.role === "student" && x.rescheduleRequestStatus === "Pending" && (
-                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Reschedule: Pending Faculty Approval</p>
-                  )}
-                  {user.role === "student" && x.status === "Needs Reschedule" && (
-                    <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-                      Your faculty member released the previous slot. Choose a new active schedule to continue this consultation.
-                    </p>
-                  )}
-                  {user.role === "student" && isAwaitingFacultyUpdate(x) && (
-                    <p className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
-                      The scheduled consultation time has passed. Waiting for your faculty member to update the consultation status.
-                    </p>
-                  )}
+                      <p className="mt-1 text-sm text-slate-500">
+                        Estimated consultation time:{" "}
+                        {x.estimatedDurationMinutes || "Not provided"}
+                        {x.estimatedDurationMinutes ? " minutes" : ""}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {new Date(x.startAt).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}{" "}
+                        –{" "}
+                        {new Date(x.endAt).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {x.consultationMode || "Online"} ·{" "}
+                        {x.location || "Location to be confirmed"}
+                      </p>
+                      {user.role === "faculty" && x.student?.program && (
+                        <p className="mt-1 break-words text-sm text-slate-500">
+                          Program: {x.student.program}
+                        </p>
+                      )}
+                      <div className="mt-3 min-w-0 text-sm">
+                        <p className="font-semibold text-slate-700">Reason:</p>
+                        <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-700">
+                          {x.reason}
+                        </p>
+                      </div>
+                      {x.notes && (
+                        <div className="mt-3 min-w-0 text-sm">
+                          <p className="font-semibold text-slate-700">Notes:</p>
+                          <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed text-slate-600">
+                            {x.notes}
+                          </p>
+                        </div>
+                      )}
+                      {user.role === "faculty" && x.rescheduleRequested && (
+                        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                          <p className="font-bold">
+                            Pending Reschedule Request
+                          </p>
+                          <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words leading-relaxed">
+                            Reason: {x.rescheduleRequestNote}
+                          </p>
+                          <p className="mt-1 text-xs text-amber-800">
+                            Requested:{" "}
+                            {new Date(
+                              x.rescheduleRequestedAt || x.updatedAt,
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                      {user.role === "student" &&
+                        x.rescheduleRequestStatus === "Pending" && (
+                          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                            Reschedule: Pending Faculty Approval
+                          </p>
+                        )}
+                      {user.role === "student" &&
+                        x.status === "Needs Reschedule" && (
+                          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                            Your faculty member released the previous slot.
+                            Choose a new active schedule to continue this
+                            consultation.
+                          </p>
+                        )}
+                      {user.role === "student" &&
+                        isAwaitingFacultyUpdate(x) && (
+                          <p className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+                            The scheduled consultation time has passed. Waiting
+                            for your faculty member to update the consultation
+                            status.
+                          </p>
+                        )}
                     </>
                   )}
                 </div>
-                <div className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "lg:w-auto lg:shrink-0"}`}>
+                <div
+                  className={`flex w-full min-w-0 flex-wrap gap-2 ${filter === "requests" ? "lg:w-52 lg:shrink-0 lg:flex-col" : "lg:w-auto lg:shrink-0"}`}
+                >
                   <button
                     type="button"
                     onClick={() => setDetails(x)}
@@ -898,16 +1036,18 @@ export default function AppointmentsPage({ filter }) {
                           onClick={() => update(x._id, "Completed")}
                           className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
                         >
-                          {updatingIds.has(x._id) ? "Completing..." : "Complete"}
+                          {updatingIds.has(x._id)
+                            ? "Completing..."
+                            : "Complete"}
                         </button>
                         {new Date(x.endAt) < new Date() && (
-                            <button
-                              type="button"
-                              onClick={() => beginReschedule(x)}
-                              className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
-                            >
-                              Reschedule
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() => beginReschedule(x)}
+                            className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                          >
+                            Reschedule
+                          </button>
                         )}
                       </>
                     )}
@@ -921,12 +1061,35 @@ export default function AppointmentsPage({ filter }) {
                         Choose New Schedule
                       </button>
                     )}
-                  {user.role === "faculty" && x.rescheduleRequestStatus === "Pending" && (
-                    <>
-                      <button type="button" onClick={() => setReviewTarget({ appointment: x, decision: "Approved" })} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white">Approve Reschedule</button>
-                      <button type="button" onClick={() => setReviewTarget({ appointment: x, decision: "Rejected" })} className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700">Reject Reschedule</button>
-                    </>
-                  )}
+                  {user.role === "faculty" &&
+                    x.rescheduleRequestStatus === "Pending" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewTarget({
+                              appointment: x,
+                              decision: "Approved",
+                            })
+                          }
+                          className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white"
+                        >
+                          Approve Reschedule
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewTarget({
+                              appointment: x,
+                              decision: "Rejected",
+                            })
+                          }
+                          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700"
+                        >
+                          Reject Reschedule
+                        </button>
+                      </>
+                    )}
                   {user.role === "student" &&
                     x.status === "Pending" &&
                     new Date(x.startAt) > new Date() && (
@@ -942,7 +1105,10 @@ export default function AppointmentsPage({ filter }) {
                     new Date(x.startAt) > new Date() && (
                       <button
                         type="button"
-                        disabled={x.rescheduleRequestStatus === "Pending" || x.rescheduleRequested}
+                        disabled={
+                          x.rescheduleRequestStatus === "Pending" ||
+                          x.rescheduleRequested
+                        }
                         onClick={() => {
                           setRequestTarget(x);
                           setRequestReason("");
@@ -950,7 +1116,8 @@ export default function AppointmentsPage({ filter }) {
                         }}
                         className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {x.rescheduleRequestStatus === "Pending" || x.rescheduleRequested
+                        {x.rescheduleRequestStatus === "Pending" ||
+                        x.rescheduleRequested
                           ? "Reschedule Requested"
                           : "Request Reschedule"}
                       </button>
@@ -1059,17 +1226,41 @@ function ConsultationHistoryTable({
         >
           <thead className="bg-maroon-800 text-white">
             <tr>
-              <th className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}>Date</th>
-              <th className={`${renderActions ? "w-[18%]" : "w-[21%]"} px-4 py-3 font-semibold`}>
+              <th
+                className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}
+              >
+                Date
+              </th>
+              <th
+                className={`${renderActions ? "w-[18%]" : "w-[21%]"} px-4 py-3 font-semibold`}
+              >
                 Subject / Topic
               </th>
-              <th className={`${renderActions ? "w-[14%]" : "w-[15%]"} px-4 py-3 font-semibold`}>{personLabel}</th>
-              <th className={`${renderActions ? "w-[10%]" : "w-[12%]"} px-4 py-3 font-semibold`}>Mode</th>
-              <th className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}>
+              <th
+                className={`${renderActions ? "w-[14%]" : "w-[15%]"} px-4 py-3 font-semibold`}
+              >
+                {personLabel}
+              </th>
+              <th
+                className={`${renderActions ? "w-[10%]" : "w-[12%]"} px-4 py-3 font-semibold`}
+              >
+                Mode
+              </th>
+              <th
+                className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}
+              >
                 Estimated Time
               </th>
-              <th className={`${renderActions ? "w-[14%]" : "w-[12%]"} px-4 py-3 font-semibold`}>Status</th>
-              <th className={`${renderActions ? "w-[20%]" : "w-[14%]"} px-4 py-3 font-semibold`}>Action</th>
+              <th
+                className={`${renderActions ? "w-[14%]" : "w-[12%]"} px-4 py-3 font-semibold`}
+              >
+                Status
+              </th>
+              <th
+                className={`${renderActions ? "w-[20%]" : "w-[14%]"} px-4 py-3 font-semibold`}
+              >
+                Action
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -1098,9 +1289,10 @@ function ConsultationHistoryTable({
                   </td>
                   <td
                     className="h-14 truncate px-4 py-0 text-slate-700"
-                    title={personFor(appointment)?.name}
+                    title={formatPersonName(personFor(appointment)?.name)}
                   >
-                    {personFor(appointment)?.name || "Not provided"}
+                    {formatPersonName(personFor(appointment)?.name) ||
+                      "Not provided"}
                   </td>
                   <td className="h-14 px-4 py-0 text-slate-600">
                     {appointment.consultationMode || "Not provided"}
@@ -1162,7 +1354,7 @@ function ConsultationHistoryTable({
                     {appointment.subject || "Consultation"}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    {personFor(appointment)?.name ||
+                    {formatPersonName(personFor(appointment)?.name) ||
                       `${personLabel} not provided`}
                   </p>
                 </div>

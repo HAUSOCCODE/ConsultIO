@@ -29,9 +29,11 @@ const availabilitySchema = new mongoose.Schema(
       select: false,
     },
     isActive: { type: Boolean, default: true, index: true },
+    expirationNotified: { type: Boolean, default: false, index: true },
   },
   { timestamps: true },
 );
 
 availabilitySchema.index({ faculty: 1, startAt: 1, endAt: 1 });
+availabilitySchema.index({ endAt: 1, expirationNotified: 1 });
 export default mongoose.model("Availability", availabilitySchema);

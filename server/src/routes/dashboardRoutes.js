@@ -5,6 +5,7 @@ import Notification from "../models/Notification.js";
 import Task from "../models/Task.js";
 import Availability from "../models/Availability.js";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { processExpiredAvailability } from "../services/availabilityExpirationService.js";
 const router = Router();
 router.use(authenticate);
 router.get("/admin", authorize("admin"), async (_req, res) => {
@@ -108,7 +109,9 @@ router.get("/student", authorize("student"), async (req, res) => {
   });
 });
 router.get("/faculty", authorize("faculty"), async (req, res) => {
-  const start = new Date();
+  await processExpiredAvailability({ facultyId: req.user.id });
+  const now = new Date();
+  const start = new Date(now);
   start.setHours(0, 0, 0, 0);
   const tomorrow = new Date(start);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -135,7 +138,7 @@ router.get("/faculty", authorize("faculty"), async (req, res) => {
       Availability.countDocuments({
         faculty: req.user.id,
         isActive: true,
-        startAt: { $gt: new Date() },
+        endAt: { $gt: now },
       }),
     ]);
   res.json({
