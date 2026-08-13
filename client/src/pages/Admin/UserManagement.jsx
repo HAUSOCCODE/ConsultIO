@@ -128,14 +128,14 @@ export default function UserManagement({ initialTab = "All Users" }) {
       </div>
     );
   return (
-    <div className="min-w-0 space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">User Management</h1>
         <p className="mt-2 text-sm text-slate-500">
           Review registrations and manage Student and Faculty accounts.
         </p>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
         {tabs.map((name) => (
           <button
             key={name}
@@ -143,7 +143,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
               setTab(name);
               setCurrentPage(1);
             }}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tab === name ? "bg-maroon-800 text-white" : "border border-slate-200 bg-white"}`}
+            className={`h-9 shrink-0 rounded-lg border px-3 text-[13px] font-semibold transition ${tab === name ? "border-maroon-800 bg-maroon-800 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-maroon-300 hover:bg-maroon-50"}`}
           >
             {name}
           </button>
@@ -159,7 +159,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
         />
       ) : (
         <>
-          <div className="grid gap-4 lg:hidden">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4 xl:hidden">
             {pageUsers.map((user) => (
               <article
                 key={user._id}
@@ -173,17 +173,20 @@ export default function UserManagement({ initialTab = "All Users" }) {
                     >
                       {formatPersonName(user.name) || "Unnamed user"}
                     </p>
-                    <p className="mt-1 break-all text-sm lowercase text-slate-600">
+                    <p
+                      className="mt-1 truncate text-sm lowercase text-slate-600"
+                      title={user.email?.toLowerCase()}
+                    >
                       {user.email?.toLowerCase()}
                     </p>
                     <p className="mt-1 text-sm capitalize text-slate-500">
                       {user.role}
                     </p>
                   </div>
-                  <StatusBadge status={user.registrationStatus} />
+                  <StatusBadge status={user.registrationStatus} compact />
                 </div>
                 <div className="mt-3">
-                  <StatusBadge status={user.accountStatus} />
+                  <StatusBadge status={user.accountStatus} compact />
                 </div>
                 <UserActions
                   user={user}
@@ -194,18 +197,18 @@ export default function UserManagement({ initialTab = "All Users" }) {
               </article>
             ))}
           </div>
-          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white lg:block">
-            <table className="w-full min-w-[900px] table-fixed text-left text-sm">
+          <div className="responsive-table-shell hidden xl:block">
+            <table className="responsive-table text-xs 2xl:text-sm">
               <colgroup>
-                <col className="w-[15%]" />
-                <col className="w-[23%]" />
+                <col className="w-[16%]" />
+                <col className="w-[24%]" />
                 <col className="w-[8%]" />
-                <col className="w-[12%]" />
+                <col className="w-[11%]" />
                 <col className="w-[14%]" />
-                <col className="w-[12%]" />
+                <col className="w-[11%]" />
                 <col className="w-[16%]" />
               </colgroup>
-              <thead className="bg-slate-50 text-xs text-slate-600">
+              <thead className="bg-maroon-800 text-[11px] uppercase tracking-wide text-white 2xl:text-xs">
                 <tr>
                   {[
                     "Name",
@@ -216,7 +219,10 @@ export default function UserManagement({ initialTab = "All Users" }) {
                     "Account",
                     "Actions",
                   ].map((heading) => (
-                    <th key={heading} className="px-3 py-4 font-bold">
+                    <th
+                      key={heading}
+                      className="whitespace-nowrap px-2.5 py-3 font-semibold 2xl:px-3"
+                    >
                       {heading}
                     </th>
                   ))}
@@ -226,17 +232,17 @@ export default function UserManagement({ initialTab = "All Users" }) {
                 {pageUsers.map((user) => (
                   <tr
                     key={user._id}
-                    className="border-t border-slate-200 align-top"
+                    className="h-[60px] border-t border-slate-200 align-middle transition-colors hover:bg-slate-50"
                   >
-                    <td className="px-3 py-4">
+                    <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                       <p
-                        className="truncate font-semibold"
+                        className="whitespace-normal break-normal font-semibold leading-4"
                         title={formatPersonName(user.name)}
                       >
                         {formatPersonName(user.name) || "—"}
                       </p>
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                       <p
                         className="truncate lowercase"
                         title={user.email?.toLowerCase()}
@@ -244,19 +250,25 @@ export default function UserManagement({ initialTab = "All Users" }) {
                         {user.email?.toLowerCase() || "—"}
                       </p>
                     </td>
-                    <td className="px-3 py-4 capitalize">{user.role}</td>
-                    <td className="px-3 py-4 text-xs">
+                    <td className="px-2.5 py-2 capitalize 2xl:px-3">
+                      {user.role}
+                    </td>
+                    <td className="px-2.5 py-2 text-[11px] whitespace-nowrap 2xl:px-3 2xl:text-xs">
                       {user.createdAt
                         ? new Date(user.createdAt).toLocaleDateString()
                         : "—"}
                     </td>
-                    <td className="px-3 py-4">
-                      <StatusBadge status={user.registrationStatus} />
+                    <td className="px-2 py-2 2xl:px-3">
+                      <div className="flex items-center justify-center">
+                        <StatusBadge status={user.registrationStatus} compact />
+                      </div>
                     </td>
-                    <td className="px-3 py-4">
-                      <StatusBadge status={user.accountStatus} />
+                    <td className="px-2 py-2 2xl:px-3">
+                      <div className="flex items-center justify-center">
+                        <StatusBadge status={user.accountStatus} compact />
+                      </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-2 2xl:px-3">
                       <UserActions
                         user={user}
                         onView={view}
@@ -271,7 +283,7 @@ export default function UserManagement({ initialTab = "All Users" }) {
                   <tr
                     key={`placeholder-${index}`}
                     aria-hidden="true"
-                    className="h-[76px] border-t border-slate-200 bg-white"
+                    className="h-[60px] border-t border-slate-200 bg-white"
                   >
                     <td colSpan={7} />
                   </tr>
@@ -317,21 +329,76 @@ export default function UserManagement({ initialTab = "All Users" }) {
 }
 
 function UserActions({ user, onView, onReset, onAction, compact = false }) {
+  if (compact)
+    return (
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onView(user)}
+          className="btn-action-sm"
+        >
+          View
+        </button>
+        <details className="group relative">
+          <summary className="btn-action-sm list-none [&::-webkit-details-marker]:hidden">
+            Actions <span aria-hidden="true">▾</span>
+          </summary>
+          <div className="absolute right-0 z-20 mt-1.5 min-w-40 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
+            <button
+              type="button"
+              onClick={() => onReset(user)}
+              className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-maroon-800 hover:bg-maroon-50"
+            >
+              Reset Password
+            </button>
+            {user.registrationStatus === "Pending" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onAction(user, "approve")}
+                  className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-green-700 hover:bg-green-50"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAction(user, "reject")}
+                  className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50"
+                >
+                  Reject
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  onAction(
+                    user,
+                    user.accountStatus === "Active" ? "Inactive" : "Active",
+                  )
+                }
+                className={`w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold ${user.accountStatus === "Active" ? "text-red-700 hover:bg-red-50" : "text-green-700 hover:bg-green-50"}`}
+              >
+                {user.accountStatus === "Active" ? "Deactivate" : "Activate"}
+              </button>
+            )}
+          </div>
+        </details>
+      </div>
+    );
   return (
-    <div
-      className={`mt-4 flex flex-wrap gap-x-3 gap-y-2 ${compact ? "lg:mt-0 lg:flex-col lg:items-start lg:gap-1" : ""}`}
-    >
+    <div className="mt-4 flex flex-wrap gap-2">
       <button
         type="button"
         onClick={() => onView(user)}
-        className="text-xs font-bold text-blue-700"
+        className="btn-action-sm"
       >
         View
       </button>
       <button
         type="button"
         onClick={() => onReset(user)}
-        className="text-xs font-bold text-maroon-800"
+        className="btn-action-sm"
       >
         Reset Password
       </button>
@@ -340,14 +407,14 @@ function UserActions({ user, onView, onReset, onAction, compact = false }) {
           <button
             type="button"
             onClick={() => onAction(user, "approve")}
-            className="text-xs font-bold text-green-700"
+            className="inline-flex h-8 items-center rounded-lg border border-green-200 bg-white px-2.5 text-xs font-semibold text-green-700 hover:bg-green-50"
           >
             Approve
           </button>
           <button
             type="button"
             onClick={() => onAction(user, "reject")}
-            className="text-xs font-bold text-red-700"
+            className="btn-danger-action-sm"
           >
             Reject
           </button>
@@ -361,7 +428,11 @@ function UserActions({ user, onView, onReset, onAction, compact = false }) {
               user.accountStatus === "Active" ? "Inactive" : "Active",
             )
           }
-          className="text-xs font-bold text-slate-700"
+          className={
+            user.accountStatus === "Active"
+              ? "btn-danger-action-sm"
+              : "inline-flex h-8 items-center rounded-lg border border-green-200 bg-white px-2.5 text-xs font-semibold text-green-700 hover:bg-green-50"
+          }
         >
           {user.accountStatus === "Active" ? "Deactivate" : "Activate"}
         </button>

@@ -6,6 +6,7 @@ import { EmptyState, Loading, StatusBadge } from "../UI";
 import { useAuth } from "../../context/AuthContext";
 import { getAppointmentDisplayStatus } from "../../utils/appointmentStatus";
 import { formatPersonName } from "../../utils/formatPersonName";
+import Pagination from "../Pagination";
 const titles = {
   totalStudents: "Total Students",
   totalFaculty: "Total Faculty",
@@ -35,10 +36,12 @@ export default function DashboardOverview({
   primaryAction,
   excludedStats = [],
   statGrid = "default",
+  summaryPageSize,
 }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [summaryPage, setSummaryPage] = useState(1);
   useEffect(() => {
     let active = true;
     const load = () =>
@@ -54,6 +57,12 @@ export default function DashboardOverview({
       window.removeEventListener("notifications:updated", load);
     };
   }, [endpoint]);
+  useEffect(() => {
+    if (!summaryPageSize || !data) return;
+    const count = Array.isArray(data?.[recentKey]) ? data[recentKey].length : 0;
+    const lastPage = Math.max(1, Math.ceil(count / summaryPageSize));
+    if (summaryPage > lastPage) setSummaryPage(lastPage);
+  }, [data, recentKey, summaryPage, summaryPageSize]);
   if (error)
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
@@ -62,6 +71,15 @@ export default function DashboardOverview({
     );
   if (!data) return <Loading />;
   const recent = Array.isArray(data?.[recentKey]) ? data[recentKey] : [];
+  const summaryItems = summaryPageSize
+    ? recent.slice(
+        (summaryPage - 1) * summaryPageSize,
+        summaryPage * summaryPageSize,
+      )
+    : recent;
+  const summaryBlankRows = summaryPageSize
+    ? Math.max(0, summaryPageSize - summaryItems.length)
+    : 0;
   return (
     <div className="w-full min-w-0 space-y-7">
       <section className="w-full min-w-0 rounded-2xl bg-[#72182A] p-5 text-white shadow-sm sm:p-8">
@@ -120,10 +138,7 @@ export default function DashboardOverview({
             {recentTitle}
           </h2>
           {recentLink && (
-            <Link
-              className="text-sm font-bold text-maroon-800"
-              to={recentLink.to}
-            >
+            <Link className="btn-action" to={recentLink.to}>
               {recentLink.label || "View all"}
             </Link>
           )}
@@ -132,10 +147,10 @@ export default function DashboardOverview({
           <EmptyState title="No recent activity" />
         ) : (
           <div className="space-y-3">
-            {recent.map((item) => (
+            {summaryItems.map((item) => (
               <div
                 key={item._id}
-                className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-maroon-200 hover:bg-maroon-50 sm:flex-row sm:items-center sm:justify-between"
+                className="flex min-h-16 flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-maroon-200 hover:bg-maroon-50 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="break-words font-semibold">
@@ -153,6 +168,7 @@ export default function DashboardOverview({
                   </p>
                 </div>
                 <StatusBadge
+                  compact
                   status={
                     user.role === "student"
                       ? getAppointmentDisplayStatus(item)
@@ -161,6 +177,24 @@ export default function DashboardOverview({
                 />
               </div>
             ))}
+            {Array.from({ length: summaryBlankRows }, (_, index) => (
+              <div
+                key={`summary-placeholder-${index}`}
+                aria-hidden="true"
+                className="min-h-16 rounded-xl border border-slate-200 bg-white"
+              />
+            ))}
+            {summaryPageSize && recent.length > summaryPageSize && (
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <Pagination
+                  currentPage={summaryPage}
+                  totalItems={recent.length}
+                  itemsPerPage={summaryPageSize}
+                  itemLabel="records"
+                  onPageChange={setSummaryPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </section>

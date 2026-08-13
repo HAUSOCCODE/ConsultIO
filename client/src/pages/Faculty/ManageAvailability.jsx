@@ -225,7 +225,7 @@ export default function ManageAvailability() {
         )}
         <form
           onSubmit={save}
-          className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4"
         >
           <Field label="Availability Date">
             <input
@@ -386,7 +386,7 @@ export default function ManageAvailability() {
             text="Add your first consultation availability using the form above."
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4">
             {availability.map((item) => (
               <ScheduleCard
                 key={item._id}

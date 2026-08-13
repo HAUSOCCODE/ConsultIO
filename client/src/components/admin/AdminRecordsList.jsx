@@ -81,7 +81,7 @@ export default function AdminRecordsList({ title }) {
   if (appointments === null) return <Loading />;
 
   return (
-    <div className="w-full min-w-0 max-w-full space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-maroon-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-500">
@@ -93,7 +93,7 @@ export default function AdminRecordsList({ title }) {
         <EmptyState title="No appointments found." />
       ) : (
         <>
-          <div className="grid gap-4 lg:hidden">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4 xl:hidden">
             {pageAppointments.map((appointment) => (
               <article
                 key={appointment._id}
@@ -113,7 +113,7 @@ export default function AdminRecordsList({ title }) {
                       {timeLabel(appointment.endAt)}
                     </p>
                   </div>
-                  <StatusBadge status={appointment.status} />
+                  <StatusBadge status={appointment.status} compact />
                 </div>
                 <dl className="mt-4 grid min-w-0 grid-cols-2 gap-3 text-sm">
                   <MobileDetail
@@ -129,7 +129,7 @@ export default function AdminRecordsList({ title }) {
                     value={appointment.consultationMode || "Online"}
                   />
                   <MobileDetail
-                    label="Estimated Time"
+                    label="Duration"
                     value={
                       appointment.estimatedDurationMinutes
                         ? `${appointment.estimatedDurationMinutes} min`
@@ -140,7 +140,7 @@ export default function AdminRecordsList({ title }) {
                 <button
                   type="button"
                   onClick={() => setDetails(appointment)}
-                  className="mt-4 w-full rounded-lg border border-maroon-200 px-3 py-2 text-sm font-bold text-maroon-800"
+                  className="btn-action mt-4"
                 >
                   View Details
                 </button>
@@ -148,33 +148,36 @@ export default function AdminRecordsList({ title }) {
             ))}
           </div>
 
-          <div className="hidden max-w-full overflow-x-auto rounded-t-2xl border border-slate-200 bg-white lg:block">
-            <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
+          <div className="responsive-table-shell hidden xl:block">
+            <table className="responsive-table text-xs 2xl:text-sm">
               <colgroup>
-                <col className="w-[11%]" />
-                <col className="w-[16%]" />
-                <col className="w-[11%]" />
-                <col className="w-[11%]" />
-                <col className="w-[16%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
                 <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[11%]" />
                 <col className="w-[9%]" />
               </colgroup>
-              <thead className="bg-maroon-800 text-xs text-white">
+              <thead className="bg-maroon-800 text-[11px] uppercase tracking-wide text-white 2xl:text-xs">
                 <tr>
                   {[
                     "Date",
-                    "Subject / Topic",
+                    "Topic",
                     "Student",
                     "Faculty",
                     "Time",
                     "Mode",
-                    "Estimated Time",
+                    "Duration",
                     "Status",
                     "Action",
                   ].map((heading) => (
-                    <th key={heading} className="px-3 py-4 font-bold">
+                    <th
+                      key={heading}
+                      className="whitespace-nowrap px-2.5 py-3 font-bold 2xl:px-3"
+                    >
                       {heading}
                     </th>
                   ))}
@@ -184,12 +187,12 @@ export default function AdminRecordsList({ title }) {
                 {pageAppointments.map((appointment) => (
                   <tr
                     key={appointment._id}
-                    className="h-[76px] border-t border-slate-200 bg-white"
+                    className="h-16 border-t border-slate-200 bg-white align-middle transition-colors hover:bg-slate-50"
                   >
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-2.5 py-2 text-[11px] whitespace-nowrap 2xl:px-3 2xl:text-xs">
                       {dateLabel(appointment.startAt)}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                       <p
                         className="truncate font-semibold"
                         title={appointment.subject}
@@ -197,46 +200,48 @@ export default function AdminRecordsList({ title }) {
                         {appointment.subject || "—"}
                       </p>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                       <p
-                        className="truncate"
+                        className="whitespace-normal break-normal leading-4"
                         title={formatPersonName(appointment.student?.name)}
                       >
                         {formatPersonName(appointment.student?.name) ||
                           "Unavailable"}
                       </p>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                       <p
-                        className="truncate"
+                        className="whitespace-normal break-normal leading-4"
                         title={formatPersonName(appointment.faculty?.name)}
                       >
                         {formatPersonName(appointment.faculty?.name) ||
                           "Unavailable"}
                       </p>
                     </td>
-                    <td className="px-3 py-3 text-xs whitespace-nowrap">
+                    <td className="px-2.5 py-2 text-[11px] leading-4 whitespace-nowrap 2xl:px-3 2xl:text-xs">
                       {timeLabel(appointment.startAt)} –{" "}
                       {timeLabel(appointment.endAt)}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2.5 py-2 whitespace-nowrap 2xl:px-3">
                       {appointment.consultationMode || "Online"}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2.5 py-2 whitespace-nowrap 2xl:px-3">
                       {appointment.estimatedDurationMinutes
                         ? `${appointment.estimatedDurationMinutes} min`
                         : "—"}
                     </td>
-                    <td className="px-3 py-3">
-                      <StatusBadge status={appointment.status} />
+                    <td className="px-2 py-2 2xl:px-3">
+                      <div className="flex items-center justify-center">
+                        <StatusBadge status={appointment.status} compact />
+                      </div>
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-2 py-2 text-center 2xl:px-3">
                       <button
                         type="button"
                         onClick={() => setDetails(appointment)}
-                        className="text-xs font-bold text-maroon-800 hover:underline"
+                        className="btn-action-sm"
                       >
-                        View Details
+                        View
                       </button>
                     </td>
                   </tr>
@@ -245,7 +250,7 @@ export default function AdminRecordsList({ title }) {
                   <tr
                     key={`placeholder-${index}`}
                     aria-hidden="true"
-                    className="h-[76px] border-t border-slate-200 bg-white"
+                    className="h-16 border-t border-slate-200 bg-white"
                   >
                     <td colSpan={9} />
                   </tr>

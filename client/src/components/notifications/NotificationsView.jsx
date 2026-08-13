@@ -27,7 +27,7 @@ const iconFor = (notification) => {
   return Bell;
 };
 
-export default function NotificationsPage({ compact = false }) {
+export default function NotificationsPage({ compact = false, admin = false }) {
   const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -200,6 +200,7 @@ export default function NotificationsPage({ compact = false }) {
           markingUnread={markingUnread}
           confirmDelete={confirmDelete}
           confirmClear={confirmClear}
+          admin={admin}
         />
         {confirmation && (
           <DeleteConfirmationModal
@@ -333,6 +334,7 @@ function CompactNotifications({
   markingUnread,
   confirmDelete,
   confirmClear,
+  admin,
 }) {
   const shown = notifications.filter((notification) =>
     filter === "Unread"
@@ -373,8 +375,10 @@ function CompactNotifications({
       : "Update";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div
+      className={`${admin ? "w-full min-w-0 max-w-full space-y-5" : "w-full min-w-0 max-w-full space-y-6"}`}
+    >
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Notifications</h1>
           <p className="mt-2 text-sm text-slate-600">
@@ -388,6 +392,7 @@ function CompactNotifications({
           onUnreadAll={unreadAll}
           markingUnread={markingUnread}
           onClear={confirmClear}
+          compact
         />
       </div>
       <div className="flex flex-wrap gap-2">
@@ -399,7 +404,7 @@ function CompactNotifications({
               setFilter(name);
               setCurrentPage(1);
             }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === name ? "bg-maroon-800 text-white" : "border border-slate-200 bg-white text-slate-700"}`}
+            className={`h-9 rounded-lg px-3 text-sm font-semibold ${filter === name ? "bg-maroon-800 text-white" : "border border-slate-200 bg-white text-slate-700"}`}
           >
             {name}
           </button>
@@ -418,27 +423,27 @@ function CompactNotifications({
         <NotificationEmptyState />
       ) : (
         <>
-          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-            <table className="w-full min-w-[800px] table-fixed text-left text-sm">
-              <thead className="bg-maroon-800 text-white">
+          <div className="responsive-table-shell responsive-table-scroll hidden md:block xl:overflow-visible">
+            <table className="responsive-table min-w-[760px] text-xs xl:min-w-0 2xl:text-sm">
+              <thead className="h-11 bg-maroon-800 text-[11px] uppercase tracking-wide text-white 2xl:text-xs">
                 <tr>
-                  <th className="w-[14%] px-4 py-3">Type</th>
-                  <th className="w-[34%] px-4 py-3">Notification</th>
-                  <th className="w-[22%] px-4 py-3">Date &amp; Time</th>
-                  <th className="w-[12%] px-4 py-3">Status</th>
-                  <th className="w-[18%] px-4 py-3">Action</th>
+                  <th className="w-[12%] px-3 py-3">Type</th>
+                  <th className="w-[35%] px-3 py-3">Notification</th>
+                  <th className="w-[21%] px-3 py-3">Date &amp; Time</th>
+                  <th className="w-[10%] px-3 py-2 text-center">Status</th>
+                  <th className="w-[22%] px-3 py-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {pageNotifications.map((notification) => (
                   <tr
                     key={notification._id}
-                    className={`h-14 ${notification.isRead ? "bg-white" : "bg-gold-50"}`}
+                    className={`h-14 align-middle ${notification.isRead ? "bg-white" : "bg-gold-50"}`}
                   >
-                    <td className="h-14 px-4 py-0 font-semibold text-maroon-800">
+                    <td className="px-3 py-2 font-semibold text-maroon-800">
                       {typeLabel(notification)}
                     </td>
-                    <td className="h-14 px-4 py-0">
+                    <td className="min-w-0 px-3 py-2">
                       <div className="flex min-w-0 items-center gap-2">
                         {!notification.isRead && (
                           <span className="h-2 w-2 shrink-0 rounded-full bg-gold-500" />
@@ -451,22 +456,24 @@ function CompactNotifications({
                         </p>
                       </div>
                     </td>
-                    <td className="h-14 px-4 py-0 text-slate-600">
+                    <td className="px-3 py-2 text-slate-600">
                       {date(notification.createdAt)}
                     </td>
-                    <td className="h-14 px-4 py-0">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${notification.isRead ? "bg-slate-100 text-slate-600" : "bg-gold-100 text-maroon-900"}`}
-                      >
-                        {notification.isRead ? "Read" : "Unread"}
-                      </span>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center">
+                        <span
+                          className={`inline-flex h-6 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-xs font-semibold leading-none ${notification.isRead ? "bg-slate-100 text-slate-600" : "bg-gold-100 text-maroon-900"}`}
+                        >
+                          {notification.isRead ? "Read" : "Unread"}
+                        </span>
+                      </div>
                     </td>
-                    <td className="h-14 px-4 py-0">
-                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <td className="px-3 py-2">
+                      <div className="table-action-group flex-nowrap whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => open(notification)}
-                          className="font-bold text-maroon-800 hover:underline"
+                          className="btn-action-sm"
                         >
                           View
                         </button>
@@ -474,7 +481,7 @@ function CompactNotifications({
                           <button
                             type="button"
                             onClick={() => read(notification._id)}
-                            className="font-semibold text-slate-600 hover:underline"
+                            className="btn-action-sm"
                           >
                             Mark Read
                           </button>
@@ -482,7 +489,7 @@ function CompactNotifications({
                         <button
                           type="button"
                           onClick={() => confirmDelete(notification)}
-                          className="font-semibold text-red-700 hover:underline"
+                          className="btn-danger-action-sm"
                         >
                           Delete
                         </button>
@@ -494,7 +501,7 @@ function CompactNotifications({
                   <tr
                     key={`empty-notification-row-${index}`}
                     aria-hidden="true"
-                    className="h-14 bg-white"
+                    className="h-14 border-t border-slate-200 bg-white"
                   >
                     <td colSpan={5} />
                   </tr>
@@ -527,30 +534,40 @@ function CompactNotifications({
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-4">
+                <div className="mt-4 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => open(notification)}
-                    className="text-sm font-bold text-maroon-800"
+                    className="btn-action-sm"
                   >
                     View
                   </button>
-                  {!notification.isRead && (
-                    <button
-                      type="button"
-                      onClick={() => read(notification._id)}
-                      className="text-sm font-semibold text-slate-600"
+                  <details className="group relative">
+                    <summary
+                      aria-label="Notification actions"
+                      className="btn-action-sm w-[30px] list-none px-0 text-base [&::-webkit-details-marker]:hidden"
                     >
-                      Mark as Read
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => confirmDelete(notification)}
-                    className="text-sm font-semibold text-red-700"
-                  >
-                    Delete
-                  </button>
+                      ⋮
+                    </summary>
+                    <div className="absolute bottom-full left-0 z-20 mb-1.5 min-w-32 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
+                      {!notification.isRead && (
+                        <button
+                          type="button"
+                          onClick={() => read(notification._id)}
+                          className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-maroon-800 hover:bg-maroon-50"
+                        >
+                          Mark as Read
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => confirmDelete(notification)}
+                        className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </article>
             ))}
@@ -585,16 +602,17 @@ function NotificationActions({
   onUnreadAll,
   markingUnread,
   onClear,
+  compact = false,
 }) {
   if (notifications.length === 0) return null;
   const hasRead = notifications.some((notification) => notification.isRead);
   return (
-    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+    <div className="grid w-full grid-cols-1 gap-2 min-[430px]:grid-cols-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
       <button
         type="button"
         onClick={onUnreadAll}
         disabled={!hasRead || markingUnread}
-        className="btn-secondary w-full py-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+        className={`${compact ? "btn-action" : "btn-secondary"} w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto`}
       >
         {markingUnread ? "Marking Unread..." : "Mark All as Unread"}
       </button>
@@ -602,7 +620,7 @@ function NotificationActions({
         <button
           type="button"
           onClick={onReadAll}
-          className="btn-secondary w-full py-2 sm:w-auto"
+          className={`${compact ? "btn-action" : "btn-secondary"} w-full sm:w-auto`}
         >
           Mark All as Read
         </button>
@@ -611,7 +629,7 @@ function NotificationActions({
         <button
           type="button"
           onClick={() => onClear("read")}
-          className="btn-secondary w-full py-2 sm:w-auto"
+          className={`${compact ? "btn-action" : "btn-secondary"} w-full sm:w-auto`}
         >
           Clear Read
         </button>
@@ -619,7 +637,7 @@ function NotificationActions({
       <button
         type="button"
         onClick={() => onClear("all")}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 sm:w-auto"
+        className={`${compact ? "btn-danger-action" : "btn-danger-action"} w-full gap-2 sm:w-auto`}
       >
         <Trash2 size={16} aria-hidden="true" />
         Clear All

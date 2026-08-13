@@ -91,7 +91,7 @@ export default function ProfilePictureEditor() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="text-xs font-bold text-maroon-800 hover:underline"
+          className="btn-action-sm"
         >
           Change Photo
         </button>
@@ -99,7 +99,7 @@ export default function ProfilePictureEditor() {
           <button
             type="button"
             onClick={() => setRemoving(true)}
-            className="text-xs font-semibold text-red-700 hover:underline"
+            className="btn-danger-action-sm"
           >
             Remove Photo
           </button>
@@ -116,7 +116,9 @@ export default function ProfilePictureEditor() {
         createPortal(
           <div
             className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-3 sm:p-4"
-            onMouseDown={(event) => event.target === event.currentTarget && close()}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && close()
+            }
           >
             <section
               role="dialog"
@@ -126,8 +128,13 @@ export default function ProfilePictureEditor() {
               className="max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:max-h-[90vh] sm:p-6"
             >
               <div className="flex items-start justify-between gap-4">
-                <h2 id="profile-picture-title" className="text-xl font-bold text-maroon-900">
-                  {removing ? "Remove Profile Picture?" : "Change Profile Picture"}
+                <h2
+                  id="profile-picture-title"
+                  className="text-xl font-bold text-maroon-900"
+                >
+                  {removing
+                    ? "Remove Profile Picture?"
+                    : "Change Profile Picture"}
                 </h2>
                 <button
                   type="button"
@@ -153,16 +160,31 @@ export default function ProfilePictureEditor() {
                 </div>
               )}
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" disabled={busy} onClick={() => close()} className="btn-secondary">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => close()}
+                  className="btn-secondary"
+                >
                   Cancel
                 </button>
                 <button
                   type="button"
                   disabled={busy}
                   onClick={removing ? remove : save}
-                  className={removing ? "rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60" : "btn-primary disabled:opacity-60"}
+                  className={
+                    removing
+                      ? "rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                      : "btn-primary disabled:opacity-60"
+                  }
                 >
-                  {busy ? (removing ? "Removing..." : "Uploading...") : removing ? "Remove" : "Save Photo"}
+                  {busy
+                    ? removing
+                      ? "Removing..."
+                      : "Uploading..."
+                    : removing
+                      ? "Remove"
+                      : "Save Photo"}
                 </button>
               </div>
             </section>

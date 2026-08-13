@@ -265,15 +265,15 @@ export default function AppointmentsPage({ filter }) {
   }
   const renderStudentAppointmentActions = (appointment, mobile = false) => (
     <div
-      className={`flex min-w-0 flex-wrap gap-2 ${mobile ? "mt-4" : "items-center"}`}
+      className={`min-w-0 gap-2 ${mobile ? "mt-4 flex flex-col min-[600px]:flex-row min-[600px]:flex-wrap" : "table-action-group flex-nowrap whitespace-nowrap"}`}
     >
       <button
         type="button"
         onClick={() => setDetails(appointment)}
         className={
           mobile
-            ? "flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-maroon-800"
-            : "text-sm font-bold text-maroon-800 hover:underline"
+            ? "btn-action h-10 w-full min-[600px]:h-9 min-[600px]:w-auto min-[600px]:flex-1"
+            : "btn-action-sm"
         }
       >
         View Details
@@ -282,7 +282,7 @@ export default function AppointmentsPage({ filter }) {
         <button
           type="button"
           onClick={() => chooseNewSchedule(appointment)}
-          className="rounded-lg bg-maroon-800 px-3 py-2 text-xs font-bold text-white"
+          className={`btn-table-primary ${mobile ? "h-10 w-full min-[600px]:h-[30px] min-[600px]:w-auto" : ""}`}
         >
           Choose New Schedule
         </button>
@@ -292,7 +292,11 @@ export default function AppointmentsPage({ filter }) {
           <button
             type="button"
             onClick={() => setCancelTarget(appointment)}
-            className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700"
+            className={
+              mobile
+                ? "btn-danger-action h-10 w-full min-[600px]:h-9 min-[600px]:w-auto"
+                : "btn-danger-action-sm"
+            }
           >
             Cancel
           </button>
@@ -310,7 +314,11 @@ export default function AppointmentsPage({ filter }) {
               setRequestReason("");
               setRequestError("");
             }}
-            className="rounded-lg border border-maroon-200 px-3 py-2 text-xs font-bold text-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className={
+              mobile
+                ? "btn-action h-10 w-full min-[600px]:h-9 min-[600px]:w-auto"
+                : "btn-action-sm"
+            }
           >
             {appointment.rescheduleRequestStatus === "Pending" ||
             appointment.rescheduleRequested
@@ -380,7 +388,7 @@ export default function AppointmentsPage({ filter }) {
       {user.role === "faculty" &&
         filter === "requests" &&
         availabilityCapacity.length > 0 && (
-          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4">
             {availabilityCapacity.map((capacity) => (
               <article
                 key={capacity.availabilityId}
@@ -994,7 +1002,7 @@ export default function AppointmentsPage({ filter }) {
                   <button
                     type="button"
                     onClick={() => setDetails(x)}
-                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                    className="btn-action"
                   >
                     View Details
                   </button>
@@ -1021,7 +1029,7 @@ export default function AppointmentsPage({ filter }) {
                       </button>
                       <button
                         onClick={() => beginReschedule(x)}
-                        className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                        className="btn-action"
                       >
                         Reschedule
                       </button>
@@ -1044,7 +1052,7 @@ export default function AppointmentsPage({ filter }) {
                           <button
                             type="button"
                             onClick={() => beginReschedule(x)}
-                            className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                            className="btn-action"
                           >
                             Reschedule
                           </button>
@@ -1084,7 +1092,7 @@ export default function AppointmentsPage({ filter }) {
                               decision: "Rejected",
                             })
                           }
-                          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700"
+                          className="btn-danger-action"
                         >
                           Reject Reschedule
                         </button>
@@ -1095,7 +1103,7 @@ export default function AppointmentsPage({ filter }) {
                     new Date(x.startAt) > new Date() && (
                       <button
                         onClick={() => setCancelTarget(x)}
-                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700"
+                        className="btn-danger-action"
                       >
                         Cancel
                       </button>
@@ -1114,7 +1122,7 @@ export default function AppointmentsPage({ filter }) {
                           setRequestReason("");
                           setRequestError("");
                         }}
-                        className="rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="btn-action"
                       >
                         {x.rescheduleRequestStatus === "Pending" ||
                         x.rescheduleRequested
@@ -1129,7 +1137,7 @@ export default function AppointmentsPage({ filter }) {
                       <button
                         type="button"
                         onClick={() => openSupportingDocument(x)}
-                        className="rounded-lg border px-4 py-2 text-sm font-bold text-maroon-800"
+                        className="btn-action"
                       >
                         View Document
                       </button>
@@ -1220,44 +1228,42 @@ function ConsultationHistoryTable({
 
   return (
     <>
-      <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm md:block">
-        <table
-          className={`w-full table-fixed text-left text-sm ${renderActions ? "min-w-[960px]" : "min-w-[840px]"}`}
-        >
-          <thead className="bg-maroon-800 text-white">
+      <div className="responsive-table-shell hidden xl:block">
+        <table className="responsive-table text-xs 2xl:text-[13px]">
+          <thead className="h-11 bg-maroon-800 text-[11px] uppercase tracking-wide text-white 2xl:text-xs">
             <tr>
               <th
-                className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[10%]" : "w-[13%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 Date
               </th>
               <th
-                className={`${renderActions ? "w-[18%]" : "w-[21%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[14%]" : "w-[21%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 Subject / Topic
               </th>
               <th
-                className={`${renderActions ? "w-[14%]" : "w-[15%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[13%]" : "w-[15%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 {personLabel}
               </th>
               <th
-                className={`${renderActions ? "w-[10%]" : "w-[12%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[8%]" : "w-[12%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 Mode
               </th>
               <th
-                className={`${renderActions ? "w-[12%]" : "w-[13%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[8%]" : "w-[13%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
-                Estimated Time
+                Duration
               </th>
               <th
-                className={`${renderActions ? "w-[14%]" : "w-[12%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[16%]" : "w-[12%]"} px-2.5 py-2 text-center font-semibold 2xl:px-3`}
               >
                 Status
               </th>
               <th
-                className={`${renderActions ? "w-[20%]" : "w-[14%]"} px-4 py-3 font-semibold`}
+                className={`${renderActions ? "w-[31%]" : "w-[14%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 Action
               </th>
@@ -1274,12 +1280,12 @@ function ConsultationHistoryTable({
               pageAppointments.map((appointment) => (
                 <tr
                   key={appointment._id}
-                  className={`${renderActions ? "h-20" : "h-14"} align-middle hover:bg-slate-50`}
+                  className="h-16 align-middle hover:bg-slate-50"
                 >
-                  <td className="h-14 px-4 py-0 text-slate-600">
+                  <td className="px-2.5 py-2 whitespace-nowrap text-slate-600 2xl:px-3">
                     {date(appointment.startAt)}
                   </td>
-                  <td className="h-14 px-4 py-0">
+                  <td className="min-w-0 px-2.5 py-2 2xl:px-3">
                     <p
                       className="truncate font-semibold text-slate-900"
                       title={appointment.subject}
@@ -1288,35 +1294,38 @@ function ConsultationHistoryTable({
                     </p>
                   </td>
                   <td
-                    className="h-14 truncate px-4 py-0 text-slate-700"
+                    className="truncate px-2.5 py-2 text-slate-700 2xl:px-3"
                     title={formatPersonName(personFor(appointment)?.name)}
                   >
                     {formatPersonName(personFor(appointment)?.name) ||
                       "Not provided"}
                   </td>
-                  <td className="h-14 px-4 py-0 text-slate-600">
+                  <td className="px-2.5 py-2 whitespace-nowrap text-slate-600 2xl:px-3">
                     {appointment.consultationMode || "Not provided"}
                   </td>
-                  <td className="h-14 px-4 py-0 text-slate-600">
+                  <td className="px-2.5 py-2 whitespace-nowrap text-slate-600 2xl:px-3">
                     {duration(appointment)}
                   </td>
-                  <td className="h-14 px-4 py-0">
-                    <StatusBadge
-                      status={
-                        role === "student"
-                          ? getAppointmentDisplayStatus(appointment)
-                          : appointment.status
-                      }
-                    />
+                  <td className="px-2 py-2 2xl:px-3">
+                    <div className="flex items-center justify-center">
+                      <StatusBadge
+                        status={
+                          role === "student"
+                            ? getAppointmentDisplayStatus(appointment)
+                            : appointment.status
+                        }
+                        compact
+                      />
+                    </div>
                   </td>
-                  <td className="h-14 px-4 py-0">
+                  <td className="px-2 py-2 2xl:px-3">
                     {renderActions ? (
                       renderActions(appointment)
                     ) : (
                       <button
                         type="button"
                         onClick={() => onView(appointment)}
-                        className="text-sm font-bold text-maroon-800 hover:underline"
+                        className="btn-action-sm"
                       >
                         View Details
                       </button>
@@ -1330,7 +1339,7 @@ function ConsultationHistoryTable({
                 <tr
                   key={`empty-consultation-row-${index}`}
                   aria-hidden="true"
-                  className={`${renderActions ? "h-20" : "h-14"} bg-white`}
+                  className="h-16 bg-white"
                 >
                   <td colSpan={7} />
                 </tr>
@@ -1339,16 +1348,16 @@ function ConsultationHistoryTable({
         </table>
       </div>
 
-      <div className="grid gap-3 md:hidden">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4 xl:hidden">
         {appointments.length === 0 ? (
           <EmptyState title={emptyTitle} />
         ) : (
           pageAppointments.map((appointment) => (
             <article
               key={appointment._id}
-              className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              className="w-full min-w-0 max-w-none rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div className="flex flex-col items-start gap-3 min-[380px]:flex-row min-[380px]:justify-between">
+              <div className="flex flex-col items-start gap-2 min-[480px]:flex-row min-[480px]:justify-between min-[480px]:gap-3">
                 <div className="min-w-0">
                   <p className="break-words font-bold text-slate-900">
                     {appointment.subject || "Consultation"}
@@ -1383,7 +1392,7 @@ function ConsultationHistoryTable({
                 </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase text-slate-500">
-                    Estimated Time
+                    Duration
                   </dt>
                   <dd className="mt-1">{duration(appointment)}</dd>
                 </div>
@@ -1394,7 +1403,7 @@ function ConsultationHistoryTable({
                 <button
                   type="button"
                   onClick={() => onView(appointment)}
-                  className="mt-4 w-full rounded-lg border border-maroon-200 px-4 py-2 text-sm font-bold text-maroon-800"
+                  className="btn-action mt-4 h-10 w-full"
                 >
                   View Details
                 </button>

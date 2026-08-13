@@ -46,8 +46,8 @@ export default function Pagination({
   };
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 border-t border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-center text-sm text-slate-600 sm:text-left">
+    <div className="flex min-w-0 flex-col gap-2.5 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <p className="text-center text-xs text-slate-500 sm:text-left">
         Showing {start}–{end} of {totalItems} {itemLabel}
       </p>
       <nav
@@ -58,7 +58,7 @@ export default function Pagination({
           type="button"
           onClick={() => changePage(page - 1)}
           disabled={page === 1}
-          className="rounded-lg px-2 py-2 text-sm font-semibold text-maroon-800 disabled:cursor-not-allowed disabled:text-slate-400 sm:px-3"
+          className="btn-action-sm disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
         >
           Previous
         </button>
@@ -67,7 +67,7 @@ export default function Pagination({
             <span
               key={item}
               aria-hidden="true"
-              className="px-1 text-sm text-slate-500"
+              className="px-1 text-xs text-slate-500"
             >
               …
             </span>
@@ -78,7 +78,7 @@ export default function Pagination({
               onClick={() => changePage(item)}
               aria-label={`Page ${item}`}
               aria-current={item === page ? "page" : undefined}
-              className={`grid h-9 min-w-9 place-items-center rounded-lg px-2 text-sm font-bold ${item === page ? "bg-maroon-800 text-white" : "text-slate-700 hover:bg-maroon-50"}`}
+              className={`grid h-8 min-w-8 place-items-center rounded-lg border px-2 text-xs font-semibold ${item === page ? "border-maroon-800 bg-maroon-800 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-maroon-300 hover:bg-maroon-50"}`}
             >
               {item}
             </button>
@@ -88,7 +88,7 @@ export default function Pagination({
           type="button"
           onClick={() => changePage(page + 1)}
           disabled={page === totalPages}
-          className="rounded-lg px-2 py-2 text-sm font-semibold text-maroon-800 disabled:cursor-not-allowed disabled:text-slate-400 sm:px-3"
+          className="btn-action-sm disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
         >
           Next
         </button>

@@ -16,6 +16,7 @@ export default function StudentDashboard() {
         unreadNotifications: "/student/notifications",
       }}
       statGrid="student"
+      summaryPageSize={4}
     />
   );
 }
