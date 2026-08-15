@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  ArrowUpRight,
   Bot,
   RotateCcw,
   Send,
@@ -134,7 +133,7 @@ export default function SOCConsultAIAssistant() {
   };
 
   return (
-    <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[100] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] md:right-6">
+    <div className="fixed bottom-[calc(0.875rem+env(safe-area-inset-bottom))] right-0 z-[100] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] md:right-6">
       {open && (
         <section
           role="dialog"
@@ -277,9 +276,9 @@ export default function SOCConsultAIAssistant() {
           onClick={() => setOpen(true)}
           aria-label="Open SOCConsult AI Assistant"
           aria-expanded={open}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-gold-400 bg-maroon-800 text-white shadow-md transition hover:bg-maroon-900 focus-visible:ring-4 focus-visible:ring-gold-200 md:hidden"
+          className="grid h-10 w-9 place-items-center rounded-l-xl border border-r-0 border-gold-400/90 bg-maroon-800 text-white shadow-[-3px_3px_10px_rgba(45,15,20,0.2)] transition hover:w-10 hover:bg-maroon-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 focus-visible:ring-offset-2 md:hidden"
         >
-          <ArrowUpRight size={19} />
+          <Bot size={18} aria-hidden="true" />
         </button>
         <button
           type="button"
