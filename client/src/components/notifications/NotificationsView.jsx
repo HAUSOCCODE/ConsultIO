@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../api/apiClient";
-import { EmptyState, ErrorState } from "../UI";
+import { EmptyState, ErrorState, StatusBadge } from "../UI";
 import Pagination from "../Pagination";
 import { useToast } from "../../context/ToastContext";
 import { formatPersonNameInNotification } from "../../utils/formatPersonName";
@@ -461,11 +461,10 @@ function CompactNotifications({
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center">
-                        <span
-                          className={`inline-flex h-6 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-xs font-semibold leading-none ${notification.isRead ? "bg-slate-100 text-slate-600" : "bg-gold-100 text-maroon-900"}`}
-                        >
-                          {notification.isRead ? "Read" : "Unread"}
-                        </span>
+                        <StatusBadge
+                          status={notification.isRead ? "Read" : "Unread"}
+                          compact
+                        />
                       </div>
                     </td>
                     <td className="px-3 py-2">
@@ -534,7 +533,7 @@ function CompactNotifications({
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => open(notification)}
@@ -542,32 +541,22 @@ function CompactNotifications({
                   >
                     View
                   </button>
-                  <details className="group relative">
-                    <summary
-                      aria-label="Notification actions"
-                      className="btn-action-sm w-[30px] list-none px-0 text-base [&::-webkit-details-marker]:hidden"
+                  {!notification.isRead && (
+                    <button
+                      type="button"
+                      onClick={() => read(notification._id)}
+                      className="btn-action-sm"
                     >
-                      ⋮
-                    </summary>
-                    <div className="absolute bottom-full left-0 z-20 mb-1.5 min-w-32 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
-                      {!notification.isRead && (
-                        <button
-                          type="button"
-                          onClick={() => read(notification._id)}
-                          className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-maroon-800 hover:bg-maroon-50"
-                        >
-                          Mark as Read
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => confirmDelete(notification)}
-                        className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </details>
+                      Mark Read
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => confirmDelete(notification)}
+                    className="btn-danger-action-sm"
+                  >
+                    Delete
+                  </button>
                 </div>
               </article>
             ))}

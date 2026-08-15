@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import RoleLayout from "../components/RoleLayout";
+import SOCConsultAIAssistant from "../components/admin/SOCConsultAIAssistant";
 const navigation = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
   { icon: Users, label: "User Management", path: "/admin/users" },
@@ -26,5 +27,10 @@ const navigation = [
   { icon: Settings, label: "System Settings", path: "/admin/settings" },
 ];
 export default function AdminLayout() {
-  return <RoleLayout role="admin" navigation={navigation} />;
+  return (
+    <>
+      <RoleLayout role="admin" navigation={navigation} />
+      <SOCConsultAIAssistant />
+    </>
+  );
 }

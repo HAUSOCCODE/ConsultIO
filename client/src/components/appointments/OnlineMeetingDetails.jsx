@@ -23,7 +23,7 @@ export default function OnlineMeetingDetails({
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Meeting Link
             </dt>
-            <dd className="mt-1 break-all text-sm text-slate-800">
+            <dd className="mt-1 [overflow-wrap:anywhere] text-sm text-slate-800">
               {appointment.meetingLink || emptyLinkText}
             </dd>
           </div>

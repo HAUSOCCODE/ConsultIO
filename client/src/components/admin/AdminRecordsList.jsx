@@ -152,13 +152,13 @@ export default function AdminRecordsList({ title }) {
             <table className="responsive-table text-xs 2xl:text-sm">
               <colgroup>
                 <col className="w-[10%]" />
-                <col className="w-[16%]" />
-                <col className="w-[12%]" />
-                <col className="w-[12%]" />
                 <col className="w-[14%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
                 <col className="w-[8%]" />
                 <col className="w-[8%]" />
-                <col className="w-[11%]" />
+                <col className="w-[15%]" />
                 <col className="w-[9%]" />
               </colgroup>
               <thead className="bg-maroon-800 text-[11px] uppercase tracking-wide text-white 2xl:text-xs">

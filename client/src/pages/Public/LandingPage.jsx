@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Footer, Navbar } from "../../components/public/PublicLayout";
+import SOCConsultPublicAIGuide from "../../components/public/SOCConsultPublicAIGuide";
 import { api } from "../../api/apiClient";
 const features = [
   [
@@ -208,7 +209,10 @@ export default function LandingPage() {
             </p>
           </div>
         </section>
-        <section className="bg-white py-16 sm:py-20" aria-labelledby="social-heading">
+        <section
+          className="bg-white py-16 sm:py-20"
+          aria-labelledby="social-heading"
+        >
           <div className="container-page">
             <div className="mx-auto max-w-2xl text-center">
               <p className="text-sm font-bold uppercase tracking-widest text-gold-600">
@@ -221,8 +225,8 @@ export default function LandingPage() {
                 Connect with the School of Computing
               </h2>
               <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-                Stay connected with the official School of Computing and
-                Student Council pages.
+                Stay connected with the official School of Computing and Student
+                Council pages.
               </p>
             </div>
 
@@ -260,10 +264,7 @@ export default function LandingPage() {
                       aria-label={`Visit ${page.title} on Facebook (opens in a new tab)`}
                     >
                       {page.instagramHref ? "Facebook" : "Visit Facebook Page"}
-                      <ExternalLink
-                        size={16}
-                        aria-hidden="true"
-                      />
+                      <ExternalLink size={16} aria-hidden="true" />
                     </a>
                     {page.instagramHref && (
                       <a
@@ -286,6 +287,7 @@ export default function LandingPage() {
         </section>
       </main>
       <Footer />
+      <SOCConsultPublicAIGuide />
     </>
   );
 }

@@ -142,7 +142,7 @@ export default function SupportingDocumentViewer({
               <FileText className="shrink-0 text-maroon-700" size={24} />
               <div className="min-w-0 flex-1">
                 <p
-                  className={`${wrapFileNames ? "whitespace-normal break-all" : "truncate"} font-semibold text-slate-900`}
+                  className={`${wrapFileNames ? "whitespace-normal [overflow-wrap:anywhere]" : "truncate"} font-semibold text-slate-900`}
                   title={document.name}
                 >
                   {documents.length > 1 ? `${index + 1}. ` : ""}

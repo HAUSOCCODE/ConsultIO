@@ -11,6 +11,15 @@ export async function api(path, options = {}) {
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || "Request failed.");
+  if (!response.ok) {
+    const error = new Error(data.message || "Request failed.");
+    error.status = response.status;
+    const retryAfter = Number(
+      data.retryAfter || response.headers.get("Retry-After"),
+    );
+    if (Number.isFinite(retryAfter) && retryAfter > 0)
+      error.retryAfter = Math.ceil(retryAfter);
+    throw error;
+  }
   return data;
 }

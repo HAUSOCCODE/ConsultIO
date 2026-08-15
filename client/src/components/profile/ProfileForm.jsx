@@ -80,7 +80,7 @@ export default function ProfilePage() {
           <ProfilePictureEditor />
           <div className="min-w-0">
             <h2 className="font-bold">{formatPersonName(user.name)}</h2>
-            <p className="break-all text-sm text-slate-500">
+            <p className="[overflow-wrap:anywhere] text-sm text-slate-500">
               {user.email || user.username}
             </p>
           </div>

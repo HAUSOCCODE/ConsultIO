@@ -12,10 +12,12 @@ export const StatusBadge = ({ status, compact = false }) => {
     "Needs Reschedule": "bg-amber-100 text-amber-800",
     "Awaiting Faculty Update": "bg-orange-100 text-orange-800",
     "No Show": "bg-rose-100 text-rose-800",
+    Unread: "bg-gold-100 text-maroon-900",
+    Read: "bg-slate-100 text-slate-600",
   };
   return (
     <span
-      className={`inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-full border border-slate-200 text-center text-xs font-semibold leading-none ${compact ? "h-6 px-2.5" : "h-7 px-3"} ${colors[status] || "bg-slate-100 text-slate-700"}`}
+      className={`inline-flex w-auto min-w-max max-w-none shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-slate-200 px-2.5 py-1 text-center font-semibold leading-none ${compact ? "text-[11px]" : "text-xs"} ${colors[status] || "bg-slate-100 text-slate-700"}`}
     >
       {status}
     </span>

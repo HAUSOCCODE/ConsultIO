@@ -132,6 +132,9 @@ export default function RoleLayout({ role, navigation }) {
             <Menu />
           </button>
           <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-extrabold tracking-tight text-maroon-900 sm:hidden">
+              SOCConsult
+            </p>
             <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-gold-600 sm:text-xs sm:tracking-[0.18em]">
               {role} workspace
             </p>

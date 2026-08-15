@@ -304,7 +304,7 @@ export default function FacultyScheduleDetailsModal({
                                 {formatPersonName(appointment.student?.name) ||
                                   "Student"}
                               </h4>
-                              <p className="break-all text-sm text-slate-500">
+                              <p className="[overflow-wrap:anywhere] text-sm text-slate-500">
                                 {appointment.student?.email ||
                                   "Email not provided"}
                               </p>
@@ -443,7 +443,7 @@ function Detail({ label, value, link = false }) {
             href={value}
             target="_blank"
             rel="noreferrer"
-            className="break-all font-semibold text-blue-700 hover:underline"
+            className="[overflow-wrap:anywhere] font-semibold text-blue-700 hover:underline"
           >
             {value}
           </a>

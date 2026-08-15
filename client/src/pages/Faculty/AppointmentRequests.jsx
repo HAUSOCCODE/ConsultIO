@@ -268,7 +268,7 @@ export default function AppointmentRequests() {
                     event.stopPropagation();
                     openSchedule(schedule);
                   }}
-                  className="inline-flex h-10 min-w-[8.5rem] items-center justify-center rounded-xl bg-maroon-800 px-5 text-sm font-semibold text-white transition hover:bg-maroon-700 focus:outline-none focus:ring-2 focus:ring-maroon-400 focus:ring-offset-2"
+                  className="inline-flex h-10 w-full items-center justify-center whitespace-nowrap rounded-xl bg-maroon-800 px-5 text-sm font-semibold text-white transition hover:bg-maroon-700 focus:outline-none focus:ring-2 focus:ring-maroon-400 focus:ring-offset-2 sm:w-auto sm:min-w-[8.5rem]"
                 >
                   View Requests
                 </button>

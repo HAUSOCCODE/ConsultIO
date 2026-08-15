@@ -503,7 +503,7 @@ function UserDetails({ user, loading, onClose, onReset, onAction }) {
               <p className="font-bold text-slate-900">
                 {formatPersonName(user.name)}
               </p>
-              <p className="break-all text-sm lowercase text-slate-600">
+              <p className="[overflow-wrap:anywhere] text-sm lowercase text-slate-600">
                 {user.email?.toLowerCase()}
               </p>
             </div>
@@ -569,7 +569,7 @@ function Details({ title, values }) {
           <div key={label} className="min-w-0 rounded-lg bg-slate-50 p-3">
             <dt className="text-xs font-semibold text-slate-500">{label}</dt>
             <dd
-              className={`mt-1 text-sm font-medium text-slate-800 ${format === "email" ? "break-all lowercase" : "break-words capitalize"}`}
+              className={`mt-1 text-sm font-medium text-slate-800 ${format === "email" ? "[overflow-wrap:anywhere] lowercase" : "break-words capitalize"}`}
             >
               {value || "Not available"}
             </dd>

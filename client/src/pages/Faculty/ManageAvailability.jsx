@@ -437,20 +437,20 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
         <span className="text-xs font-bold text-slate-500">Status:</span>
         <StatusBadge status={statusLabel} />
       </div>
-      <div className="mt-4 flex flex-wrap gap-4">
+      <div className="mt-4 flex min-w-0 flex-wrap gap-2">
         {!expired && (
           <>
             <button
               type="button"
               onClick={() => onEdit(item)}
-              className="text-sm font-bold text-blue-700"
+              className="btn-action-sm"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => onToggle(item)}
-              className="text-sm font-bold text-maroon-800"
+              className="btn-action-sm"
             >
               {item.isActive ? "Deactivate" : "Activate"}
             </button>
@@ -459,7 +459,7 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
         <button
           type="button"
           onClick={() => onRemove(item._id)}
-          className="text-sm font-bold text-red-700"
+          className="btn-danger-action-sm"
         >
           Remove
         </button>

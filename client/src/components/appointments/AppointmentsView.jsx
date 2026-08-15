@@ -1238,12 +1238,12 @@ function ConsultationHistoryTable({
                 Date
               </th>
               <th
-                className={`${renderActions ? "w-[14%]" : "w-[21%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
+                className={`${renderActions ? "w-[13%]" : "w-[17%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 Subject / Topic
               </th>
               <th
-                className={`${renderActions ? "w-[13%]" : "w-[15%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
+                className={`${renderActions ? "w-[12%]" : "w-[14%]"} px-2.5 py-2 font-semibold 2xl:px-3`}
               >
                 {personLabel}
               </th>
@@ -1258,7 +1258,7 @@ function ConsultationHistoryTable({
                 Duration
               </th>
               <th
-                className={`${renderActions ? "w-[16%]" : "w-[12%]"} px-2.5 py-2 text-center font-semibold 2xl:px-3`}
+                className={`${renderActions ? "w-[18%]" : "w-[17%]"} px-2.5 py-2 text-center font-semibold 2xl:px-3`}
               >
                 Status
               </th>

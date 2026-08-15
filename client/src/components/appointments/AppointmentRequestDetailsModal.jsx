@@ -192,7 +192,7 @@ function Detail({
         {label}
       </p>
       <p
-        className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll ? "break-all" : breakAnywhere ? "[overflow-wrap:anywhere]" : "break-words"}`}
+        className={`mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 ${breakAll || breakAnywhere ? "[overflow-wrap:anywhere]" : "break-words"}`}
       >
         {value || "Not available"}
       </p>

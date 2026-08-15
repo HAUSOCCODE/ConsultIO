@@ -285,7 +285,7 @@ function RecentRegistrations({ registrations }) {
                 <p className="break-words font-semibold">
                   {formatPersonName(item.name)}
                 </p>
-                <p className="break-all text-sm text-slate-500">{item.email}</p>
+                <p className="[overflow-wrap:anywhere] text-sm text-slate-500">{item.email}</p>
               </div>
               <StatusBadge status={item.status || "Pending"} />
             </div>
