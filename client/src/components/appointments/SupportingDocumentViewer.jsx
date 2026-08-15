@@ -223,7 +223,7 @@ function DocumentPreviewModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000] flex h-[100dvh] w-screen items-center justify-center bg-black/70 p-0 sm:p-4"
+      className="fixed inset-0 z-[10000] flex h-[100dvh] w-full min-w-0 items-center justify-center bg-black/70 p-0 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section

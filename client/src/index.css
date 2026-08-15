@@ -55,6 +55,12 @@
   iframe {
     @apply max-w-full;
   }
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="file"] {
+    @apply w-full min-w-0 max-w-full;
+  }
   ::selection {
     @apply bg-gold-200 text-maroon-900;
   }

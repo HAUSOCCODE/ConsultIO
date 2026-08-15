@@ -380,7 +380,7 @@ export default function BookPage() {
         availabilityOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
+            className="fixed inset-0 z-[9999] flex h-[100dvh] w-full min-w-0 items-center justify-center bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) =>
               event.target === event.currentTarget && setAvailabilityOpen(false)
             }
@@ -553,7 +553,7 @@ export default function BookPage() {
       {chosenSchedule &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-black/50 p-4"
+            className="fixed inset-0 z-[9999] flex h-[100dvh] w-full min-w-0 items-center justify-center overflow-hidden bg-black/50 p-3 sm:p-4"
             onMouseDown={(event) =>
               event.target === event.currentTarget && setChosenSchedule(null)
             }

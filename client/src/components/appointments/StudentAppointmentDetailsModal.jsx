@@ -36,7 +36,7 @@ export default function StudentAppointmentDetailsModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
+      className="fixed inset-0 z-[9999] flex h-[100dvh] w-full min-w-0 items-center justify-center bg-black/50 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
@@ -73,7 +73,7 @@ export default function StudentAppointmentDetailsModal({
         </header>
 
         <div className="space-y-6 px-5 py-5 sm:px-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid min-w-0 gap-6 md:grid-cols-2">
             <Section title="Consultation Information">
               <Detail label="Subject / Topic" value={appointment.subject} />
               <Detail
@@ -252,15 +252,15 @@ export default function StudentAppointmentDetailsModal({
 
 function Section({ title, children }) {
   return (
-    <section className="rounded-xl border border-slate-200 p-4">
-      <h3 className="mb-4 font-bold text-maroon-900">{title}</h3>
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    <section className="min-w-0 rounded-xl border border-slate-200 p-4">
+      <h3 className="mb-4 break-words font-bold text-maroon-900">{title}</h3>
+      <div className="grid min-w-0 gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
 function Detail({ label, value, wide = false }) {
   return (
-    <div className={wide ? "sm:col-span-2" : ""}>
+    <div className={`min-w-0 ${wide ? "sm:col-span-2" : ""}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>

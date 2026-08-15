@@ -44,7 +44,7 @@ export default function ProfileImagePreview({
       {open &&
         createPortal(
           <div
-            className="fixed inset-0 z-[10020] flex h-[100dvh] w-screen items-center justify-center bg-black/80 p-3 sm:p-6"
+            className="fixed inset-0 z-[10020] flex h-[100dvh] w-full min-w-0 items-center justify-center bg-black/80 p-3 sm:p-6"
             onMouseDown={(event) =>
               event.target === event.currentTarget && setOpen(false)
             }

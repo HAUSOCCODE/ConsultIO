@@ -53,7 +53,7 @@ export default function FacultyScheduleDetailsModal({
   const rejected = details?.rejectedRequests || [];
   return createPortal(
     <div
-      className="fixed inset-0 z-[9998] flex h-[100dvh] w-screen items-center justify-center bg-black/50 p-3 sm:p-4"
+      className="fixed inset-0 z-[9998] flex h-[100dvh] w-full min-w-0 items-center justify-center bg-black/50 p-3 sm:p-4"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section

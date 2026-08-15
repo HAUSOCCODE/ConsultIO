@@ -210,8 +210,8 @@ export default function ManageAvailability() {
   if (!availability) return <Loading />;
 
   return (
-    <div className="space-y-6">
-      <section className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
+      <section className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 xl:p-6">
         <h1 className="text-xl font-bold text-maroon-900">
           Manage Consultation Availability
         </h1>
@@ -223,138 +223,139 @@ export default function ManageAvailability() {
             {formError}
           </p>
         )}
-        <form
-          onSubmit={save}
-          className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-4"
-        >
-          <Field label="Availability Date">
-            <input
-              className="field mt-2"
-              type="date"
-              required
-              value={form.date}
-              onChange={(event) =>
-                setForm({ ...form, date: event.target.value })
-              }
-            />
-          </Field>
-          <Field label="Start Time">
-            <input
-              className="field mt-2"
-              type="time"
-              step="60"
-              required
-              value={form.startTime}
-              onChange={(event) =>
-                setForm({ ...form, startTime: event.target.value })
-              }
-            />
-          </Field>
-          <Field label="End Time">
-            <input
-              className="field mt-2"
-              type="time"
-              step="60"
-              required
-              value={form.endTime}
-              onChange={(event) =>
-                setForm({ ...form, endTime: event.target.value })
-              }
-            />
-          </Field>
-          <Field label="Consultation Mode">
-            <select
-              className="field mt-2"
-              value={form.mode}
-              onChange={(event) => {
-                const mode = event.target.value;
-                setForm({
-                  ...form,
-                  mode,
-                  location: mode === "Face-to-Face" ? form.location : "",
-                  meetingPlatform:
-                    mode === "Online"
-                      ? form.meetingPlatform || "Google Meet"
-                      : "Google Meet",
-                  customMeetingPlatform:
-                    mode === "Online" ? form.customMeetingPlatform : "",
-                  meetingLink: mode === "Online" ? form.meetingLink : "",
-                });
-                setFormError("");
-              }}
-            >
-              <option value="Face-to-Face">Face-to-Face</option>
-              <option value="Online">Online</option>
-            </select>
-          </Field>
-          {form.mode === "Face-to-Face" ? (
-            <Field label="Location">
+        <form onSubmit={save} className="mt-6 min-w-0 max-w-full space-y-4">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <Field label="Availability Date">
               <input
                 className="field mt-2"
+                type="date"
                 required
-                placeholder="SJH Building - Room 104"
-                value={form.location}
+                value={form.date}
                 onChange={(event) =>
-                  setForm({ ...form, location: event.target.value })
+                  setForm({ ...form, date: event.target.value })
                 }
               />
             </Field>
-          ) : (
-            <>
-              <Field label="Meeting Platform">
-                <select
-                  className="field mt-2"
-                  required
-                  value={form.meetingPlatform}
-                  onChange={(event) => {
-                    setForm({
-                      ...form,
-                      meetingPlatform: event.target.value,
-                      customMeetingPlatform:
-                        event.target.value === "Other"
-                          ? form.customMeetingPlatform
-                          : "",
-                    });
-                    setFormError("");
-                  }}
-                >
-                  {meetingPlatforms.map((platform) => (
-                    <option key={platform} value={platform}>
-                      {platform}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              {form.meetingPlatform === "Other" && (
-                <Field label="Platform Name">
-                  <input
-                    className="field mt-2"
-                    required
-                    placeholder="Enter meeting platform"
-                    value={form.customMeetingPlatform}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        customMeetingPlatform: event.target.value,
-                      })
-                    }
-                  />
-                </Field>
-              )}
-              <Field label="Meeting Link">
+            <Field label="Start Time">
+              <input
+                className="field mt-2"
+                type="time"
+                step="60"
+                required
+                value={form.startTime}
+                onChange={(event) =>
+                  setForm({ ...form, startTime: event.target.value })
+                }
+              />
+            </Field>
+            <Field label="End Time">
+              <input
+                className="field mt-2"
+                type="time"
+                step="60"
+                required
+                value={form.endTime}
+                onChange={(event) =>
+                  setForm({ ...form, endTime: event.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Consultation Mode">
+              <select
+                className="field mt-2"
+                value={form.mode}
+                onChange={(event) => {
+                  const mode = event.target.value;
+                  setForm({
+                    ...form,
+                    mode,
+                    location: mode === "Face-to-Face" ? form.location : "",
+                    meetingPlatform:
+                      mode === "Online"
+                        ? form.meetingPlatform || "Google Meet"
+                        : "Google Meet",
+                    customMeetingPlatform:
+                      mode === "Online" ? form.customMeetingPlatform : "",
+                    meetingLink: mode === "Online" ? form.meetingLink : "",
+                  });
+                  setFormError("");
+                }}
+              >
+                <option value="Face-to-Face">Face-to-Face</option>
+                <option value="Online">Online</option>
+              </select>
+            </Field>
+            {form.mode === "Face-to-Face" ? (
+              <Field label="Location">
                 <input
                   className="field mt-2"
-                  type="url"
-                  placeholder="https://meet.google.com/abc-defg-hij"
-                  value={form.meetingLink}
+                  required
+                  placeholder="SJH Building - Room 104"
+                  value={form.location}
                   onChange={(event) =>
-                    setForm({ ...form, meetingLink: event.target.value })
+                    setForm({ ...form, location: event.target.value })
                   }
                 />
               </Field>
-            </>
-          )}
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end md:col-span-2 xl:col-span-3">
+            ) : (
+              <>
+                <Field label="Meeting Platform">
+                  <select
+                    className="field mt-2"
+                    required
+                    value={form.meetingPlatform}
+                    onChange={(event) => {
+                      setForm({
+                        ...form,
+                        meetingPlatform: event.target.value,
+                        customMeetingPlatform:
+                          event.target.value === "Other"
+                            ? form.customMeetingPlatform
+                            : "",
+                      });
+                      setFormError("");
+                    }}
+                  >
+                    {meetingPlatforms.map((platform) => (
+                      <option key={platform} value={platform}>
+                        {platform}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {form.meetingPlatform === "Other" && (
+                  <Field label="Platform Name">
+                    <input
+                      className="field mt-2"
+                      required
+                      placeholder="Enter meeting platform"
+                      value={form.customMeetingPlatform}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          customMeetingPlatform: event.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                )}
+                <Field label="Meeting Link">
+                  <input
+                    className="field mt-2"
+                    type="url"
+                    placeholder="https://meet.google.com/abc-defg-hij"
+                    value={form.meetingLink}
+                    onChange={(event) =>
+                      setForm({ ...form, meetingLink: event.target.value })
+                    }
+                  />
+                </Field>
+              </>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <button
               disabled={saving}
               className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-48"
@@ -470,7 +471,7 @@ function ScheduleCard({ item, onEdit, onToggle, onRemove }) {
 
 function Field({ label, children }) {
   return (
-    <label className="block text-sm font-semibold text-slate-700">
+    <label className="block w-full min-w-0 max-w-full text-sm font-semibold text-slate-700">
       {label}
       {children}
     </label>
